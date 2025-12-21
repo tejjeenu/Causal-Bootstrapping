@@ -1,0 +1,26 @@
+1) Age → Number_of_Major_Blood_Vessels
+As people age, atherosclerosis (plaque build-up and arterial narrowing) accumulates over time, leading to a greater likelihood of multiple coronary vessels showing disease. Aging is one of the strongest non-modifiable risk factors for coronary artery disease, and vessel involvement tends to increase with age as plaque progresses.
+
+2) Sex → Number_of_Major_Blood_Vessels
+Biological sex influences cardiovascular risk. Men tend to develop coronary artery disease earlier and more extensively than women, and vascular biology and patterns of plaque formation differ by sex. Thus sex causally affects the extent of vessel disease.
+
+3) Age → Heart_Disease_Presence
+Older age independently increases risk of clinical heart disease outcomes, reflecting cumulative exposure to risk factors and age-related changes in the cardiovascular system. Age is a well-established risk factor for heart disease. 
+
+4) Sex → Heart_Disease_Presence
+Men show higher rates of clinical coronary heart disease at earlier ages than women. Sex differences in hormone levels, risk profiles, and vascular biology contribute to differing heart disease risk.
+
+5) Age → remaining_features
+Age influences many cardiovascular risk factors grouped here as “remaining_features,” such as blood pressure, cholesterol, exercise tolerance, etc. These factors tend to change with age and are linked to heart disease risk. 
+
+6) Sex → remaining_features
+Sex modifies distributions of many clinical risk factors (e.g., blood pressure, lipid profiles), such that men and women show different patterns of these features that contribute to heart disease. 
+
+7) Number_of_Major_Blood_Vessels → remaining_features
+A higher number of involved major vessels reflects more severe coronary disease, which is often associated with other clinical features (e.g., changes in exercise response or ECG abnormalities). This path reflects disease progression effects on other measured clinical featur
+
+8) Number_of_Major_Blood_Vessels → Heart_Disease_Presence
+More extensive coronary vessel involvement is associated with increased probability of clinically diagnosed heart disease. In datasets like the UCI Heart Disease data, the number of major vessels (0–3) is directly predictive of disease presen
+
+9) remaining_features → Heart_Disease_Presence
+The “remaining_features” (e.g., blood pressure, cholesterol, ECG measures, exercise responses) include well-known risk factors and clinical markers that causally contribute to the development and diagnosis of heart disease. High blood pressure and high cholesterol are major risk factors, and other measures reflect heart function and stress responses linked to disease. 
