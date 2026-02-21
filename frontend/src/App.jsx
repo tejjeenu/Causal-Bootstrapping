@@ -5,29 +5,29 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 const NUMERIC_FIELDS = [
   { key: 'age', label: 'Age', min: 1, max: 120, step: 1 },
-  { key: 'trestbps', label: 'Resting BP', min: 50, max: 250, step: 1 },
-  { key: 'chol', label: 'Cholesterol', min: 50, max: 700, step: 1 },
-  { key: 'thalach', label: 'Max HR', min: 50, max: 250, step: 1 },
+  { key: 'trestbps', label: 'Resting Blood Pressure (mm Hg)', min: 50, max: 250, step: 1 },
+  { key: 'chol', label: 'Serum Cholesterol (mg/dl)', min: 50, max: 700, step: 1 },
+  { key: 'thalach', label: 'Maximum Heart Rate (beats per minute)', min: 120, max: 200, step: 1 },
   { key: 'oldpeak', label: 'Oldpeak', min: 0, max: 10, step: 0.1 },
-  { key: 'ca', label: 'Major Vessels (ca)', min: 0, max: 4, step: 1 },
+  { key: 'ca', label: 'Number of Major Vessels', min: 0, max: 3, step: 1 },
 ]
 
 const CATEGORICAL_FIELDS = [
   { key: 'sex', label: 'Sex', options: ['Female', 'Male'] },
   {
     key: 'cp',
-    label: 'Chest Pain',
-    options: ['Asymptomatic', 'AtypicalAngina', 'NonAnginalPain', 'TypicalAngina'],
+    label: 'Chest Pain Type',
+    options: ['Asymptomatic', 'Atypical Angina', 'NonAnginal Pain', 'Typical Angina'],
   },
-  { key: 'fbs', label: 'Fasting Blood Sugar', options: ['<=120', '>120'] },
+  { key: 'fbs', label: 'Fasting Blood Sugar (mg/dl)', options: ['<=120', '>120'] },
   {
     key: 'restecg',
     label: 'Resting ECG',
-    options: ['LVHypertrophy', 'NormalECG', 'STTAbnormality'],
+    options: ['LV Hypertrophy', 'Normal ECG', 'ST-T Abnormality'],
   },
-  { key: 'exang', label: 'Exercise Angina', options: ['NoExAngina', 'YesExAngina'] },
+  { key: 'exang', label: 'Exercise Induced Angina', options: ['No Ex Angina', 'Yes Ex Angina'] },
   { key: 'slope', label: 'ST Slope', options: ['Downsloping', 'Flat', 'Upsloping'] },
-  { key: 'thal', label: 'Thal', options: ['FixedDefect', 'Normal', 'ReversibleDefect'] },
+  { key: 'thal', label: 'Thallium Stress Test', options: ['Fixed Defect', 'Normal', 'Reversible Defect'] },
 ]
 
 const DEFAULT_FORM = {
@@ -40,8 +40,8 @@ const DEFAULT_FORM = {
   sex: 'Male',
   cp: 'Asymptomatic',
   fbs: '<=120',
-  restecg: 'NormalECG',
-  exang: 'YesExAngina',
+  restecg: 'Normal ECG',
+  exang: 'Yes Ex Angina',
   slope: 'Flat',
   thal: 'ReversibleDefect',
 }
@@ -137,11 +137,38 @@ function App() {
     setFormState((previous) => ({ ...previous, [key]: value }))
   }
 
+  const validateFormState = () => {
+    for (const field of NUMERIC_FIELDS) {
+      const numericValue = Number(formState[field.key])
+
+      if (!Number.isFinite(numericValue)) {
+        return `${field.label} must be a valid number.`
+      }
+
+      if (numericValue < field.min || numericValue > field.max) {
+        return `${field.label} must be between ${field.min} and ${field.max}.`
+      }
+
+      if (field.step === 1 && !Number.isInteger(numericValue)) {
+        return `${field.label} must be a whole number.`
+      }
+    }
+
+    return ''
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
-    setLoading(true)
     setError('')
     setResult(null)
+
+    const validationError = validateFormState()
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setLoading(true)
 
     const payload = Object.fromEntries(
       Object.entries(formState).map(([key, value]) => [
@@ -320,25 +347,6 @@ function App() {
           )}
         </aside>
       </main>
-
-      <footer className="meta-bar reveal delay-4">
-        <div>
-          <span>Selected model</span>
-          <strong>{modelInfo?.model_name ?? 'Unavailable'}</strong>
-        </div>
-        <div>
-          <span>Accuracy on confounded holdout</span>
-          <strong>
-            {modelInfo?.selection_metrics?.accuracy
-              ? `${(modelInfo.selection_metrics.accuracy * 100).toFixed(2)}%`
-              : 'Unavailable'}
-          </strong>
-        </div>
-        <div>
-          <span>Bootstrap models</span>
-          <strong>{modelInfo?.bootstrap_count ?? 0}</strong>
-        </div>
-      </footer>
     </div>
   )
 }

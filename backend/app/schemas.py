@@ -54,9 +54,9 @@ class PredictionInput(APIModel):
     age: float = Field(..., ge=1, le=120)
     trestbps: float = Field(..., ge=50, le=250, description="Resting blood pressure")
     chol: float = Field(..., ge=50, le=700, description="Serum cholesterol")
-    thalach: float = Field(..., ge=50, le=250, description="Maximum heart rate achieved")
+    thalach: float = Field(..., ge=120, le=200, description="Maximum heart rate achieved")
     oldpeak: float = Field(..., ge=0, le=10, description="ST depression induced by exercise")
-    ca: float = Field(..., ge=0, le=4, description="Number of major vessels")
+    ca: int = Field(..., ge=0, le=3, description="Number of major vessels")
 
     sex: Sex
     cp: ChestPainType
