@@ -8,17 +8,23 @@ python -m venv .venv
 pip install -r backend\requirements.txt
 ```
 
-## 2. Train and save the best deconfounded model artifact
+## 2. Ensure model and normalization artifacts exist
 
 ```powershell
-python backend\train_best_deconfounded_model.py
+# expected model artifact (already present in this repo by default)
+neural_network_model.joblib
+
+# normalization settings exported from initial EDA
+backend\models\initial_eda_normalization_settings.json
 ```
 
-This generates:
+If the normalization JSON is missing, run the normalization export cell in
+`initial EDA.ipynb` (the cell that applies `log1p` to `oldpeak` and `StandardScaler`).
 
-`backend/models/best_deconfounded_model.joblib`
+You can also override paths with environment variables:
 
-`--bootstrap-count` is optional (default is `10`).
+- `MODEL_ARTIFACT_PATH`
+- `NORMALIZATION_SETTINGS_PATH`
 
 ## 3. Run the API
 

@@ -18,8 +18,11 @@ class Sex(str, Enum):
 class ChestPainType(str, Enum):
     asymptomatic = "Asymptomatic"
     atypical_angina = "AtypicalAngina"
+    atypical_angina_spaced = "Atypical Angina"
     non_anginal_pain = "NonAnginalPain"
+    non_anginal_pain_spaced = "NonAnginal Pain"
     typical_angina = "TypicalAngina"
+    typical_angina_spaced = "Typical Angina"
 
 
 class FastingBloodSugar(str, Enum):
@@ -29,13 +32,18 @@ class FastingBloodSugar(str, Enum):
 
 class RestingECG(str, Enum):
     lv_hypertrophy = "LVHypertrophy"
+    lv_hypertrophy_spaced = "LV Hypertrophy"
     normal_ecg = "NormalECG"
+    normal_ecg_spaced = "Normal ECG"
     stt_abnormality = "STTAbnormality"
+    stt_abnormality_spaced = "ST-T Abnormality"
 
 
 class ExerciseAngina(str, Enum):
     no_ex_angina = "NoExAngina"
+    no_ex_angina_spaced = "No Ex Angina"
     yes_ex_angina = "YesExAngina"
+    yes_ex_angina_spaced = "Yes Ex Angina"
 
 
 class STSlope(str, Enum):
@@ -46,8 +54,10 @@ class STSlope(str, Enum):
 
 class Thalassemia(str, Enum):
     fixed_defect = "FixedDefect"
+    fixed_defect_spaced = "Fixed Defect"
     normal = "Normal"
     reversible_defect = "ReversibleDefect"
+    reversible_defect_spaced = "Reversible Defect"
 
 
 class PredictionInput(APIModel):

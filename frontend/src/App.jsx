@@ -43,7 +43,7 @@ const DEFAULT_FORM = {
   restecg: 'Normal ECG',
   exang: 'Yes Ex Angina',
   slope: 'Flat',
-  thal: 'ReversibleDefect',
+  thal: 'Reversible Defect',
 }
 
 function CustomDropdown({ id, value, options, onChange }) {
@@ -112,6 +112,8 @@ function App() {
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const [modelInfo, setModelInfo] = useState(null)
+  const [animatedRiskPercent, setAnimatedRiskPercent] = useState(0)
+  const [animatedUncertaintyPercent, setAnimatedUncertaintyPercent] = useState(0)
 
   const confidenceRange = useMemo(() => {
     if (!result?.confidence_interval_95) return null
@@ -132,6 +134,35 @@ function App() {
 
     loadModelInfo()
   }, [])
+
+  useEffect(() => {
+    if (!result) {
+      setAnimatedRiskPercent(0)
+      setAnimatedUncertaintyPercent(0)
+      return
+    }
+
+    const targetRisk = Number(result.risk_percent ?? 0)
+    const targetUncertainty = Number(result.uncertainty_percent ?? 0)
+    const durationMs = 950
+    const start = performance.now()
+
+    const easeOutCubic = (t) => 1 - (1 - t) ** 3
+    let frameId = 0
+
+    const tick = (now) => {
+      const progress = Math.min((now - start) / durationMs, 1)
+      const eased = easeOutCubic(progress)
+      setAnimatedRiskPercent(targetRisk * eased)
+      setAnimatedUncertaintyPercent(targetUncertainty * eased)
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick)
+      }
+    }
+
+    frameId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frameId)
+  }, [result])
 
   const updateValue = (key, value) => {
     setFormState((previous) => ({ ...previous, [key]: value }))
@@ -328,15 +359,32 @@ function App() {
 
         <aside className="panel result-panel reveal delay-3">
           <h2>Prediction Result</h2>
-          {!result && <p className="placeholder">Submit the form to see risk and uncertainty.</p>}
+          {loading && (
+            <div className="predicting-card" role="status" aria-live="polite" aria-label="Calculating risk">
+              <div className="predicting-header">
+                <span className="predict-dot" />
+                <p>Analyzing profile and estimating uncertainty...</p>
+              </div>
+              <div className="predict-track">
+                <span />
+              </div>
+            </div>
+          )}
+
+          {!loading && !result && (
+            <p className="placeholder">Submit the form to see risk and uncertainty.</p>
+          )}
 
           {result && (
-            <div className="result-content">
+            <div className="result-content result-content-animate">
               <p className={`risk-label ${result.risk_label === 'High Risk' ? 'high' : 'low'}`}>
                 {result.risk_label}
               </p>
-              <p className="risk-percent">{result.risk_percent}%</p>
-              <p className="metric">Uncertainty (std dev): {result.uncertainty_percent}%</p>
+              <p className="risk-percent">{animatedRiskPercent.toFixed(2)}%</p>
+              <div className="risk-meter" aria-hidden="true">
+                <span style={{ width: `${Math.min(Math.max(animatedRiskPercent, 0), 100)}%` }} />
+              </div>
+              <p className="metric">Uncertainty (std dev): {animatedUncertaintyPercent.toFixed(2)}%</p>
               <p className="metric">
                 95% interval: {confidenceRange?.[0]} - {confidenceRange?.[1]}
               </p>

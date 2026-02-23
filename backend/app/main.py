@@ -53,7 +53,12 @@ def model_info() -> ModelInfoResponse:
 @app.post("/predict", response_model=PredictionResponse)
 def predict(payload: PredictionInput) -> PredictionResponse:
     bundle = _get_bundle()
-    features = encode_single_record(payload.model_dump())
+    try:
+        features = encode_single_record(payload.model_dump())
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     risk_probability, uncertainty_std = predict_with_uncertainty(bundle, features)
 
     ci_low = max(0.0, risk_probability - 1.96 * uncertainty_std)
@@ -69,4 +74,3 @@ def predict(payload: PredictionInput) -> PredictionResponse:
         model_name=bundle.model_name,
         training_source=bundle.training_source,
     )
-

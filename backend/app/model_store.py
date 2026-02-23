@@ -10,6 +10,12 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from .feature_encoding import NUMERIC_FEATURES
+
+JITTER_STD = 0.05
+JITTER_SAMPLES = 40
+JITTER_SEED = 42
+
 
 @dataclass
 class ModelBundle:
@@ -23,7 +29,7 @@ class ModelBundle:
 
 def _resolve_artifact_path() -> Path:
     repo_root = Path(__file__).resolve().parents[2]
-    default_path = repo_root / "backend" / "models" / "best_deconfounded_model.joblib"
+    default_path = repo_root / "neural_network_model.joblib"
     configured_path = os.getenv("MODEL_ARTIFACT_PATH")
     return Path(configured_path) if configured_path else default_path
 
@@ -48,18 +54,32 @@ def load_model_bundle() -> ModelBundle:
     if not artifact_path.exists():
         raise FileNotFoundError(
             f"Model artifact not found at '{artifact_path}'. "
-            "Run `python backend/train_best_deconfounded_model.py` first."
+            "Place `neural_network_model.joblib` in the repo root or set MODEL_ARTIFACT_PATH."
         )
 
     artifact = joblib.load(artifact_path)
+    if isinstance(artifact, dict) and "model" in artifact:
+        model = artifact["model"]
+        bootstrap_models = list(artifact.get("bootstrap_models", []))
+        model_name = artifact.get("model_name", model.__class__.__name__)
+        training_source = artifact.get("training_source", artifact_path.name)
+        feature_columns = list(artifact.get("feature_columns", []))
+        selection_metrics = dict(artifact.get("selection_metrics", {}))
+    else:
+        model = artifact
+        bootstrap_models = []
+        model_name = model.__class__.__name__
+        training_source = artifact_path.name
+        feature_columns = list(getattr(model, "feature_names_in_", []))
+        selection_metrics = {}
 
     return ModelBundle(
-        model=artifact["model"],
-        bootstrap_models=list(artifact.get("bootstrap_models", [])),
-        model_name=artifact.get("model_name", artifact["model"].__class__.__name__),
-        training_source=artifact.get("training_source", "unknown"),
-        feature_columns=list(artifact.get("feature_columns", [])),
-        selection_metrics=dict(artifact.get("selection_metrics", {})),
+        model=model,
+        bootstrap_models=bootstrap_models,
+        model_name=model_name,
+        training_source=training_source,
+        feature_columns=feature_columns,
+        selection_metrics=selection_metrics,
     )
 
 
@@ -81,4 +101,30 @@ def predict_with_uncertainty(bundle: ModelBundle, features: pd.DataFrame) -> tup
             return float(np.mean(tree_probs_np)), float(np.std(tree_probs_np, ddof=0))
 
     base_probability = _predict_proba(bundle.model, features)
-    return float(base_probability), 0.0
+    jitter_std = _estimate_input_jitter_uncertainty(bundle.model, features)
+    if jitter_std > 0.0:
+        return float(base_probability), float(jitter_std)
+
+    return float(base_probability), float(np.sqrt(max(base_probability * (1.0 - base_probability), 0.0)))
+
+
+def _estimate_input_jitter_uncertainty(model: Any, features: pd.DataFrame) -> float:
+    """Approximate uncertainty for single deterministic models via local input perturbation."""
+    numeric_cols_present = [col for col in NUMERIC_FEATURES if col in features.columns]
+    if not numeric_cols_present:
+        return 0.0
+
+    rng = np.random.default_rng(JITTER_SEED)
+    sample_probs = []
+
+    for _ in range(JITTER_SAMPLES):
+        perturbed = features.copy()
+        current = perturbed.loc[:, numeric_cols_present].to_numpy(dtype=float, copy=True)
+        noise = rng.normal(0.0, JITTER_STD, size=current.shape)
+        perturbed.loc[:, numeric_cols_present] = current + noise
+        sample_probs.append(_predict_proba(model, perturbed))
+
+    if not sample_probs:
+        return 0.0
+
+    return float(np.std(np.array(sample_probs, dtype=float), ddof=0))

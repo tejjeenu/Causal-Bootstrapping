@@ -1,0 +1,38 @@
+{
+  "scaler_type": "StandardScaler",
+  "numeric_features": [
+    "age",
+    "trestbps",
+    "chol",
+    "thalach",
+    "oldpeak",
+    "ca"
+  ],
+  "preprocessing": {
+    "oldpeak": "log1p before scaling"
+  },
+  "mean": {
+    "age": 54.48529411764706,
+    "trestbps": 131.87867647058823,
+    "chol": 247.2610294117647,
+    "thalach": 149.0441176470588,
+    "oldpeak": 0.5788711102974831,
+    "ca": 0.6801470588235294
+  },
+  "scale": {
+    "age": 8.954529985791325,
+    "trestbps": 17.645716477745406,
+    "chol": 49.327628686989286,
+    "thalach": 23.351334401680354,
+    "oldpeak": 0.5210112012912826,
+    "ca": 0.9179036099706939
+  },
+  "variance": {
+    "age": 80.18360726643598,
+    "trestbps": 311.37131001297575,
+    "chol": 2433.214951881488,
+    "thalach": 545.2848183391004,
+    "oldpeak": 0.2714526718709855,
+    "ca": 0.8425470371972317
+  }
+}

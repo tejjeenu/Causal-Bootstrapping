@@ -316,6 +316,57 @@ h1 {
   gap: 0.55rem;
 }
 
+.result-content-animate {
+  animation: result-pop 0.5s ease both;
+}
+
+.predicting-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  border: 1px solid #bfd5e8;
+  background: linear-gradient(110deg, #f1f8ff, #ffffff 50%, #edf7ff);
+}
+
+.predicting-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.predicting-header p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.predict-dot {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  background: var(--nhs-blue);
+  box-shadow: 0 0 0 0 rgba(0, 94, 184, 0.45);
+  animation: predict-pulse 1.25s ease-out infinite;
+}
+
+.predict-track {
+  position: relative;
+  height: 0.42rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #dceaf7;
+}
+
+.predict-track span {
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nhs-blue), #5ea9ee);
+  animation: predict-sweep 1s ease-in-out infinite;
+}
+
 .risk-label {
   margin: 0;
   font-size: 0.9rem;
@@ -338,6 +389,22 @@ h1 {
   line-height: 1;
   font-weight: 800;
   color: var(--nhs-blue-dark);
+}
+
+.risk-meter {
+  width: 100%;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #d8e7f6;
+  overflow: hidden;
+}
+
+.risk-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0b6fc8, #27a3f6);
+  transition: width 0.25s ease-out;
 }
 
 .metric,
@@ -429,6 +496,41 @@ h1 {
   }
   50% {
     transform: scale(1.03);
+  }
+}
+
+@keyframes predict-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 94, 184, 0.45);
+  }
+  80% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 12px rgba(0, 94, 184, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 94, 184, 0);
+  }
+}
+
+@keyframes predict-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+@keyframes result-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
