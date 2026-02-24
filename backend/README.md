@@ -8,7 +8,92 @@ python -m venv .venv
 pip install -r backend\requirements.txt
 ```
 
-## 2. Ensure model and normalization artifacts exist
+## 2. Configure Supabase auth
+
+Set these keys in `backend\.env`:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_RESULTS_TABLE` (optional, defaults to `prediction_results`)
+- `SUPABASE_RISK_SETTINGS_TABLE` (optional, defaults to `risk_classification_settings`)
+
+## 3. Create tables in Supabase SQL Editor
+
+```sql
+create extension if not exists pgcrypto;
+
+create table if not exists public.prediction_results (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  clinical_inputs jsonb not null,
+  risk_probability double precision not null,
+  risk_percent double precision not null,
+  risk_label text not null,
+  uncertainty_std double precision not null,
+  uncertainty_percent double precision not null,
+  confidence_interval_95 jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.risk_classification_settings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  threshold double precision not null check (threshold >= 0 and threshold <= 1),
+  label text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, threshold)
+);
+
+alter table public.prediction_results enable row level security;
+alter table public.risk_classification_settings enable row level security;
+
+drop policy if exists "users can read own results" on public.prediction_results;
+create policy "users can read own results"
+on public.prediction_results
+for select
+using (auth.uid() = user_id);
+
+drop policy if exists "users can insert own results" on public.prediction_results;
+create policy "users can insert own results"
+on public.prediction_results
+for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "users can update own results" on public.prediction_results;
+create policy "users can update own results"
+on public.prediction_results
+for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "users can read own risk settings" on public.risk_classification_settings;
+create policy "users can read own risk settings"
+on public.risk_classification_settings
+for select
+using (auth.uid() = user_id);
+
+drop policy if exists "users can insert own risk settings" on public.risk_classification_settings;
+create policy "users can insert own risk settings"
+on public.risk_classification_settings
+for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "users can update own risk settings" on public.risk_classification_settings;
+create policy "users can update own risk settings"
+on public.risk_classification_settings
+for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "users can delete own risk settings" on public.risk_classification_settings;
+create policy "users can delete own risk settings"
+on public.risk_classification_settings
+for delete
+using (auth.uid() = user_id);
+```
+
+## 4. Ensure model and normalization artifacts exist
 
 ```powershell
 # expected model artifact (already present in this repo by default)
@@ -26,7 +111,7 @@ You can also override paths with environment variables:
 - `MODEL_ARTIFACT_PATH`
 - `NORMALIZATION_SETTINGS_PATH`
 
-## 3. Run the API
+## 5. Run the API
 
 ```powershell
 uvicorn backend.app.main:app --reload --port 8000
@@ -35,5 +120,13 @@ uvicorn backend.app.main:app --reload --port 8000
 ## API endpoints
 
 - `GET /health`
-- `GET /model-info`
-- `POST /predict`
+- `POST /auth/signup`
+- `POST /auth/login`
+- `GET /auth/me`
+- `POST /auth/logout`
+- `GET /model-info` (public)
+- `POST /predict` (public)
+- `POST /results` (authenticated)
+- `GET /results` (authenticated)
+- `GET /risk-settings` (authenticated)
+- `PUT /risk-settings` (authenticated)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class APIModel(BaseModel):
@@ -98,6 +98,11 @@ class PredictionInput(APIModel):
     }
 
 
+class RiskRule(APIModel):
+    threshold: float = Field(..., ge=0.0, le=1.0)
+    label: str = Field(..., min_length=1, max_length=60)
+
+
 class PredictionResponse(APIModel):
     risk_probability: float
     risk_percent: float
@@ -107,6 +112,7 @@ class PredictionResponse(APIModel):
     confidence_interval_95: List[float]
     model_name: str
     training_source: str
+    risk_rules: List[RiskRule]
 
 
 class HealthResponse(APIModel):
@@ -120,3 +126,57 @@ class ModelInfoResponse(APIModel):
     selection_metrics: dict
     bootstrap_count: int
     feature_count: int
+
+
+class AuthCredentials(APIModel):
+    email: str = Field(..., min_length=5, max_length=254)
+    password: str = Field(..., min_length=6, max_length=128)
+
+
+class AuthUser(APIModel):
+    id: str
+    email: str | None = None
+
+
+class AuthSessionResponse(APIModel):
+    authenticated: bool
+    user: AuthUser | None = None
+    email_confirmation_required: bool = False
+
+
+class MessageResponse(APIModel):
+    detail: str
+
+
+class RiskClassificationRulesUpsertRequest(APIModel):
+    rules: List[RiskRule] = Field(..., min_length=1, max_length=20)
+
+    @model_validator(mode="after")
+    def validate_rule_set(self) -> "RiskClassificationRulesUpsertRequest":
+        seen: set[float] = set()
+        for rule in self.rules:
+            key = round(rule.threshold, 10)
+            if key in seen:
+                raise ValueError("Threshold values must be unique.")
+            seen.add(key)
+        return self
+
+
+class RiskClassificationSettingsResponse(APIModel):
+    rules: List[RiskRule]
+
+
+class SavedPredictionRecord(APIModel):
+    id: str
+    created_at: str
+    clinical_inputs: dict
+    risk_probability: float
+    risk_percent: float
+    risk_label: str
+    uncertainty_std: float
+    uncertainty_percent: float
+    confidence_interval_95: List[float]
+
+
+class SavedPredictionListResponse(APIModel):
+    results: List[SavedPredictionRecord]
