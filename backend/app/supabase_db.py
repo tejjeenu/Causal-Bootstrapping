@@ -216,6 +216,8 @@ def insert_prediction_result(
     settings: Settings,
     *,
     access_token: str,
+    patient_first_name: str,
+    patient_last_name: str,
     clinical_inputs: dict[str, Any],
     risk_probability: float,
     risk_percent: float,
@@ -225,6 +227,8 @@ def insert_prediction_result(
     confidence_interval_95: list[float],
 ) -> dict[str, Any]:
     payload = {
+        "patient_first_name": patient_first_name,
+        "patient_last_name": patient_last_name,
         "clinical_inputs": clinical_inputs,
         "risk_probability": risk_probability,
         "risk_percent": risk_percent,
@@ -254,7 +258,7 @@ def list_prediction_results(
 ) -> list[dict[str, Any]]:
     safe_limit = min(max(limit, 1), 200)
     select = (
-        "id,created_at,clinical_inputs,risk_probability,risk_percent,risk_label,"
+        "id,created_at,patient_first_name,patient_last_name,clinical_inputs,risk_probability,risk_percent,risk_label,"
         "uncertainty_std,uncertainty_percent,confidence_interval_95"
     )
     path = f"{settings.supabase_results_table}?select={select}&order=created_at.desc&limit={safe_limit}"

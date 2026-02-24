@@ -154,14 +154,72 @@
 }
 
 .auth-inline-toggle {
-  margin-top: 0.75rem;
-  border: 0;
-  background: transparent;
+  margin-top: 0.5rem;
+  border: 1px solid #9ec5e6;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f4f9ff, #ffffff);
   color: var(--nhs-blue-dark);
-  text-decoration: underline;
   cursor: pointer;
   font-size: 0.9rem;
-  padding: 0;
+  font-weight: 700;
+  padding: 0.48rem 0.8rem 0.48rem 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.auth-inline-toggle:hover {
+  transform: translateY(-1px);
+  border-color: #5f9fd1;
+  box-shadow: 0 8px 22px rgba(0, 94, 184, 0.12);
+}
+
+.auth-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: #e8f3ff;
+  color: #0b58a4;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-toggle-icon svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.auth-toggle-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.auth-inline-toggle:hover .auth-toggle-icon {
+  transform: translateX(1px);
+  background: #dcedff;
+}
+
+.auth-switch-card {
+  margin-top: 0.8rem;
+  border: 1px solid #d4e5f3;
+  border-radius: 0.95rem;
+  background:
+    radial-gradient(circle at top right, rgba(92, 164, 227, 0.15), transparent 45%),
+    #f8fbff;
+  padding: 0.62rem 0.72rem;
+}
+
+.auth-switch-caption {
+  margin: 0;
+  color: #3c6484;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .risk-settings-form {
@@ -593,6 +651,12 @@ select:focus-visible {
   font-style: italic;
 }
 
+.save-identity-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
 .save-result-button {
   border: 0;
   border-radius: 0.85rem;
@@ -870,6 +934,10 @@ select:focus-visible {
 
 @media (max-width: 700px) {
   .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .save-identity-fields {
     grid-template-columns: 1fr;
   }
 

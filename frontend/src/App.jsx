@@ -44,6 +44,7 @@ const DEFAULT_RULES = [
   { threshold: 0.35, label: 'Medium Risk' },
   { threshold: 0.7, label: 'High Risk' },
 ]
+const DEFAULT_SAVE_IDENTITY = { firstName: '', lastName: '' }
 
 function App() {
   const [authChecked, setAuthChecked] = useState(false)
@@ -77,6 +78,7 @@ function App() {
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
+  const [saveIdentity, setSaveIdentity] = useState(DEFAULT_SAVE_IDENTITY)
 
   const confidenceRange = useMemo(() => {
     if (!result?.confidence_interval_95) return null
@@ -284,6 +286,7 @@ function App() {
       setRiskRules(DEFAULT_RULES)
       setSaveError('')
       setSaveMessage('')
+      setSaveIdentity(DEFAULT_SAVE_IDENTITY)
     }
   }
 
@@ -339,9 +342,20 @@ function App() {
       setSaveError('Run prediction first.')
       return
     }
+    const firstName = saveIdentity.firstName.trim()
+    const lastName = saveIdentity.lastName.trim()
+    if (!firstName || !lastName) {
+      setSaveError('Enter first and last name before saving.')
+      return
+    }
+    const payload = {
+      patient_first_name: firstName,
+      patient_last_name: lastName,
+      clinical_inputs: lastPredictionPayload,
+    }
     setSaveLoading(true)
     try {
-      const response = await apiFetch('/results', { method: 'POST', body: JSON.stringify(lastPredictionPayload) })
+      const response = await apiFetch('/results', { method: 'POST', body: JSON.stringify(payload) })
       const body = await response.json()
       if (!response.ok) {
         setSaveError(body?.detail || 'Unable to save result.')
@@ -472,6 +486,8 @@ function App() {
     const headers = [
       'id',
       'created_at',
+      'patient_first_name',
+      'patient_last_name',
       'age',
       'sex',
       'cp',
@@ -490,6 +506,8 @@ function App() {
       return [
         entry?.id ?? '',
         entry?.created_at ?? '',
+        entry?.patient_first_name ?? '',
+        entry?.patient_last_name ?? '',
         clinical.age ?? '',
         clinical.sex ?? '',
         clinical.cp ?? '',
@@ -607,13 +625,23 @@ function App() {
           </form>
           {authError && <p className="error" role="alert">{authError}</p>}
           {authMessage && <p className="auth-message-inline">{authMessage}</p>}
-          <button
-            type="button"
-            className="auth-inline-toggle"
-            onClick={() => setAuthMode((prev) => (prev === 'login' ? 'signup' : 'login'))}
-          >
-            {authMode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
-          </button>
+          <div className="auth-switch-card">
+            <p className="auth-switch-caption">
+              {authMode === 'login' ? 'New to the app?' : 'Already have an account?'}
+            </p>
+            <button
+              type="button"
+              className="auth-inline-toggle"
+              onClick={() => setAuthMode((prev) => (prev === 'login' ? 'signup' : 'login'))}
+            >
+              <span>{authMode === 'login' ? 'Create account' : 'Sign in instead'}</span>
+              <span aria-hidden="true" className="auth-toggle-icon">
+                <svg viewBox="0 0 20 20" focusable="false" aria-hidden="true">
+                  <path d="M7 5.5L11.5 10L7 14.5" />
+                </svg>
+              </span>
+            </button>
+          </div>
         </section>
       )}
 
@@ -734,9 +762,35 @@ function App() {
               {ruleSummary && <p className="metric">Rules: {ruleSummary}</p>}
               <div className="divider" />
               {authUser ? (
-                <button type="button" className="save-result-button" onClick={handleSaveResult} disabled={saveLoading}>
-                  {saveLoading ? 'Saving...' : 'Save This Result'}
-                </button>
+                <>
+                  <div className="save-identity-fields">
+                    <label className="field">
+                      <span>Patient First Name</span>
+                      <input
+                        type="text"
+                        maxLength={80}
+                        value={saveIdentity.firstName}
+                        onChange={(event) => setSaveIdentity((prev) => ({ ...prev, firstName: event.target.value }))}
+                        autoComplete="given-name"
+                        required
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Patient Last Name</span>
+                      <input
+                        type="text"
+                        maxLength={80}
+                        value={saveIdentity.lastName}
+                        onChange={(event) => setSaveIdentity((prev) => ({ ...prev, lastName: event.target.value }))}
+                        autoComplete="family-name"
+                        required
+                      />
+                    </label>
+                  </div>
+                  <button type="button" className="save-result-button" onClick={handleSaveResult} disabled={saveLoading}>
+                    {saveLoading ? 'Saving...' : 'Save This Result'}
+                  </button>
+                </>
               ) : (
                 <p className="metric login-hint">Sign in to save this result and access your own history.</p>
               )}
@@ -817,6 +871,8 @@ function App() {
                     <thead>
                       <tr>
                         <th scope="col">Date</th>
+                        <th scope="col">Patient First Name</th>
+                        <th scope="col">Patient Last Name</th>
                         <th scope="col">Age</th>
                         <th scope="col">Sex</th>
                         <th scope="col">Chest Pain</th>
@@ -836,6 +892,8 @@ function App() {
                         return (
                           <tr key={entry.id}>
                             <td>{formatSavedDate(entry.created_at)}</td>
+                            <td>{entry?.patient_first_name || '-'}</td>
+                            <td>{entry?.patient_last_name || '-'}</td>
                             <td>{getClinicalInputValue(entry, 'age')}</td>
                             <td>{getClinicalInputValue(entry, 'sex')}</td>
                             <td>{getClinicalInputValue(entry, 'cp')}</td>
@@ -866,3 +924,4 @@ function App() {
 }
 
 export default App
+

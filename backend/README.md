@@ -25,6 +25,8 @@ create extension if not exists pgcrypto;
 create table if not exists public.prediction_results (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  patient_first_name text not null,
+  patient_last_name text not null,
   clinical_inputs jsonb not null,
   risk_probability double precision not null,
   risk_percent double precision not null,
@@ -34,6 +36,43 @@ create table if not exists public.prediction_results (
   confidence_interval_95 jsonb not null,
   created_at timestamptz not null default now()
 );
+
+alter table public.prediction_results add column if not exists patient_first_name text;
+alter table public.prediction_results add column if not exists patient_last_name text;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'prediction_results'
+      and column_name = 'first_name'
+  ) then
+    execute '
+      update public.prediction_results
+      set patient_first_name = coalesce(nullif(btrim(patient_first_name), ''''), nullif(btrim(first_name), ''''))
+      where patient_first_name is null or btrim(patient_first_name) = ''''
+    ';
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'prediction_results'
+      and column_name = 'last_name'
+  ) then
+    execute '
+      update public.prediction_results
+      set patient_last_name = coalesce(nullif(btrim(patient_last_name), ''''), nullif(btrim(last_name), ''''))
+      where patient_last_name is null or btrim(patient_last_name) = ''''
+    ';
+  end if;
+end $$;
+update public.prediction_results set patient_first_name = 'Unknown' where patient_first_name is null or btrim(patient_first_name) = '';
+update public.prediction_results set patient_last_name = 'Unknown' where patient_last_name is null or btrim(patient_last_name) = '';
+alter table public.prediction_results alter column patient_first_name set not null;
+alter table public.prediction_results alter column patient_last_name set not null;
 
 create table if not exists public.risk_classification_settings (
   id uuid primary key default gen_random_uuid(),

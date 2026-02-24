@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class APIModel(BaseModel):
@@ -166,9 +166,25 @@ class RiskClassificationSettingsResponse(APIModel):
     rules: List[RiskRule]
 
 
+class SavePredictionRequest(APIModel):
+    patient_first_name: str = Field(..., min_length=1, max_length=80)
+    patient_last_name: str = Field(..., min_length=1, max_length=80)
+    clinical_inputs: PredictionInput
+
+    @field_validator("patient_first_name", "patient_last_name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Name cannot be empty.")
+        return normalized
+
+
 class SavedPredictionRecord(APIModel):
     id: str
     created_at: str
+    patient_first_name: str
+    patient_last_name: str
     clinical_inputs: dict
     risk_probability: float
     risk_percent: float

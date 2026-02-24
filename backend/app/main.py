@@ -21,6 +21,7 @@ from .schemas import (
     RiskClassificationRulesUpsertRequest,
     RiskClassificationSettingsResponse,
     RiskRule,
+    SavePredictionRequest,
     SavedPredictionListResponse,
     SavedPredictionRecord,
 )
@@ -261,6 +262,8 @@ def _to_float_or_error(value: Any, field_name: str) -> float:
 def _map_saved_result_row(row: dict[str, Any]) -> SavedPredictionRecord:
     record_id = row.get("id")
     created_at = row.get("created_at")
+    patient_first_name = str(row.get("patient_first_name") or row.get("first_name") or "").strip()
+    patient_last_name = str(row.get("patient_last_name") or row.get("last_name") or "").strip()
     clinical_inputs = row.get("clinical_inputs")
     confidence_interval = row.get("confidence_interval_95")
 
@@ -283,6 +286,8 @@ def _map_saved_result_row(row: dict[str, Any]) -> SavedPredictionRecord:
     return SavedPredictionRecord(
         id=record_id,
         created_at=created_at,
+        patient_first_name=patient_first_name,
+        patient_last_name=patient_last_name,
         clinical_inputs=clinical_inputs,
         risk_probability=_to_float_or_error(row.get("risk_probability"), "risk_probability"),
         risk_percent=_to_float_or_error(row.get("risk_percent"), "risk_percent"),
@@ -416,20 +421,22 @@ def predict(payload: PredictionInput, request: Request) -> PredictionResponse:
 
 @app.post("/results", response_model=SavedPredictionRecord, status_code=status.HTTP_201_CREATED)
 def save_result(
-    payload: PredictionInput,
+    payload: SavePredictionRequest,
     request: Request,
     _: AuthUser = Depends(_require_authenticated_user),
 ) -> SavedPredictionRecord:
     _enforce_trusted_origin(request)
     access_token = _get_session_access_token(request)
     risk_rules = _get_or_default_risk_rules(access_token, strict=True)
-    prediction = _predict_from_input(payload, risk_rules)
+    prediction = _predict_from_input(payload.clinical_inputs, risk_rules)
 
     try:
         row = insert_prediction_result(
             settings,
             access_token=access_token,
-            clinical_inputs=payload.model_dump(),
+            patient_first_name=payload.patient_first_name,
+            patient_last_name=payload.patient_last_name,
+            clinical_inputs=payload.clinical_inputs.model_dump(),
             risk_probability=prediction.risk_probability,
             risk_percent=prediction.risk_percent,
             risk_label=prediction.risk_label,
