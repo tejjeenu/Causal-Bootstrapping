@@ -46,7 +46,42 @@ const DEFAULT_RULES = [
   { threshold: 0.35, label: 'Medium Risk' },
   { threshold: 0.7, label: 'High Risk' },
 ]
+const ZERO_THRESHOLD_TOLERANCE = 1e-10
 const DEFAULT_SAVE_IDENTITY = { firstName: '', lastName: '' }
+const BATCH_TEMPLATE_HEADERS = [
+  'patient_first_name',
+  'patient_last_name',
+  'age',
+  'trestbps',
+  'chol',
+  'thalach',
+  'oldpeak',
+  'ca',
+  'sex',
+  'cp',
+  'fbs',
+  'restecg',
+  'exang',
+  'slope',
+  'thal',
+]
+const BATCH_TEMPLATE_EXAMPLE_ROW = [
+  'Ada',
+  'Lovelace',
+  '58',
+  '132',
+  '224',
+  '173',
+  '3.2',
+  '2',
+  'Male',
+  'Asymptomatic',
+  '<=120',
+  'Normal ECG',
+  'Yes Ex Angina',
+  'Flat',
+  'Reversible Defect',
+]
 
 function App() {
   const [authChecked, setAuthChecked] = useState(false)
@@ -80,7 +115,16 @@ function App() {
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
+  const [saveSuccessDialogOpen, setSaveSuccessDialogOpen] = useState(false)
   const [saveIdentity, setSaveIdentity] = useState(DEFAULT_SAVE_IDENTITY)
+  const [batchFile, setBatchFile] = useState(null)
+  const [batchLoading, setBatchLoading] = useState(false)
+  const [batchError, setBatchError] = useState('')
+  const [batchMessage, setBatchMessage] = useState('')
+  const [batchResults, setBatchResults] = useState([])
+  const [batchSaveLoading, setBatchSaveLoading] = useState(false)
+  const [batchSaveError, setBatchSaveError] = useState('')
+  const [batchSaveMessage, setBatchSaveMessage] = useState('')
 
   const confidenceRange = useMemo(() => {
     if (!result?.confidence_interval_95) return null
@@ -120,7 +164,7 @@ function App() {
   }, [result])
 
   const createApiFetch = (baseUrl) => (path, options = {}) => {
-    const shouldSetJsonHeader = options.body !== undefined
+    const shouldSetJsonHeader = options.body !== undefined && !(options.body instanceof FormData)
     return fetch(`${baseUrl}${path}`, {
       credentials: 'include',
       ...options,
@@ -133,13 +177,27 @@ function App() {
   const mlApiFetch = createApiFetch(ML_API_BASE)
   const crudApiFetch = createApiFetch(CRUD_API_BASE)
 
+  const hasZeroThreshold = (rules) =>
+    Array.isArray(rules) && rules.some((rule) => Math.abs(Number(rule?.threshold)) <= ZERO_THRESHOLD_TOLERANCE)
+
   const normalizeRules = (rules) => {
     if (!Array.isArray(rules) || rules.length === 0) return DEFAULT_RULES
     const normalized = rules
       .map((rule) => ({ threshold: Number(rule?.threshold), label: String(rule?.label ?? '').trim() }))
-      .filter((rule) => Number.isFinite(rule.threshold) && rule.label)
+      .filter((rule) => Number.isFinite(rule.threshold) && rule.threshold >= 0 && rule.threshold <= 1 && rule.label)
       .sort((a, b) => a.threshold - b.threshold)
-    return normalized.length > 0 ? normalized : DEFAULT_RULES
+    if (normalized.length < 2) return DEFAULT_RULES
+
+    const uniqueByThreshold = []
+    const seen = new Set()
+    for (const rule of normalized) {
+      const key = rule.threshold.toFixed(10)
+      if (seen.has(key)) continue
+      seen.add(key)
+      uniqueByThreshold.push(rule)
+    }
+    if (uniqueByThreshold.length < 2 || !hasZeroThreshold(uniqueByThreshold)) return DEFAULT_RULES
+    return uniqueByThreshold
   }
 
   const normalizeRiskLabel = (label) => {
@@ -290,7 +348,10 @@ function App() {
       setRiskRules(DEFAULT_RULES)
       setSaveError('')
       setSaveMessage('')
+      setSaveSuccessDialogOpen(false)
       setSaveIdentity(DEFAULT_SAVE_IDENTITY)
+      setBatchSaveError('')
+      setBatchSaveMessage('')
     }
   }
 
@@ -311,6 +372,7 @@ function App() {
     setError('')
     setSaveError('')
     setSaveMessage('')
+    setSaveSuccessDialogOpen(false)
     const validationError = validateForm()
     if (validationError) {
       setError(validationError)
@@ -382,11 +444,209 @@ function App() {
       }
       setSavedResults((previous) => [body, ...previous.filter((entry) => entry.id !== body.id)])
       setSaveMessage('Saved.')
+      setSaveSuccessDialogOpen(true)
     } catch {
       setSaveError('Unable to save result.')
     } finally {
       setSaveLoading(false)
     }
+  }
+
+  const clearPredictionView = () => {
+    setResult(null)
+    setLastPredictionPayload(null)
+    setSaveError('')
+    setSaveMessage('')
+    setSaveIdentity(DEFAULT_SAVE_IDENTITY)
+  }
+
+  const downloadBatchCsvTemplate = () => {
+    const csv = [BATCH_TEMPLATE_HEADERS, BATCH_TEMPLATE_EXAMPLE_ROW].map((row) => row.join(',')).join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = downloadUrl
+    link.download = 'batch_prediction_template.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(downloadUrl)
+  }
+
+  const runBatchPrediction = async () => {
+    setBatchError('')
+    setBatchMessage('')
+    setBatchSaveError('')
+    setBatchSaveMessage('')
+    if (!batchFile) {
+      setBatchError('Upload a CSV file first.')
+      return
+    }
+    const formData = new FormData()
+    formData.append('file', batchFile)
+    formData.append('risk_rules_json', JSON.stringify(normalizeRules(riskRules)))
+
+    setBatchLoading(true)
+    try {
+      const response = await mlApiFetch('/predict/batch-csv', { method: 'POST', body: formData })
+      const body = await response.json()
+      if (!response.ok) {
+        setBatchError(body?.detail || 'Batch prediction failed.')
+        return
+      }
+      const predictions = Array.isArray(body?.predictions) ? body.predictions : []
+      setBatchResults(predictions)
+      setBatchMessage(`Batch prediction complete. Processed ${Number(body?.total_rows) || predictions.length} row(s).`)
+    } catch {
+      setBatchError('Unable to connect to ML inference API for batch prediction.')
+    } finally {
+      setBatchLoading(false)
+    }
+  }
+
+  const saveBatchResultsToHistory = async () => {
+    setBatchSaveError('')
+    setBatchSaveMessage('')
+    if (!authUser) {
+      setBatchSaveError('Sign in first to save batch results.')
+      setAuthPanelOpen(true)
+      return
+    }
+    if (batchResults.length === 0) {
+      setBatchSaveError('Run batch prediction first.')
+      return
+    }
+
+    const saveableRows = batchResults.filter((entry) => {
+      const firstName = String(entry?.patient_first_name ?? '').trim()
+      const lastName = String(entry?.patient_last_name ?? '').trim()
+      return Boolean(firstName && lastName)
+    })
+    const skippedCount = batchResults.length - saveableRows.length
+    if (saveableRows.length === 0) {
+      setBatchSaveError('No batch rows include both patient first and last name.')
+      return
+    }
+
+    setBatchSaveLoading(true)
+    let successCount = 0
+    let failedCount = 0
+    const savedRecords = []
+
+    for (const entry of saveableRows) {
+      const payload = {
+        patient_first_name: String(entry.patient_first_name).trim(),
+        patient_last_name: String(entry.patient_last_name).trim(),
+        clinical_inputs: entry.clinical_inputs,
+        risk_probability: Number(entry?.prediction?.risk_probability),
+        risk_percent: Number(entry?.prediction?.risk_percent),
+        risk_label: String(entry?.prediction?.risk_label ?? ''),
+        uncertainty_std: Number(entry?.prediction?.uncertainty_std),
+        uncertainty_percent: Number(entry?.prediction?.uncertainty_percent),
+        confidence_interval_95: Array.isArray(entry?.prediction?.confidence_interval_95)
+          ? entry.prediction.confidence_interval_95.map((value) => Number(value))
+          : [],
+      }
+
+      try {
+        const response = await crudApiFetch('/results', { method: 'POST', body: JSON.stringify(payload) })
+        const body = await response.json()
+        if (!response.ok) {
+          failedCount += 1
+          continue
+        }
+        successCount += 1
+        savedRecords.push(body)
+      } catch {
+        failedCount += 1
+      }
+    }
+
+    if (savedRecords.length > 0) {
+      setSavedResults((previous) => {
+        const merged = [...savedRecords, ...previous]
+        const seen = new Set()
+        return merged.filter((entry) => {
+          const id = String(entry?.id ?? '')
+          if (!id || seen.has(id)) return false
+          seen.add(id)
+          return true
+        })
+      })
+    }
+
+    if (successCount === 0) {
+      setBatchSaveError('No batch results were saved.')
+    } else {
+      const summaryParts = [`Saved ${successCount} batch result(s).`]
+      if (skippedCount > 0) summaryParts.push(`Skipped ${skippedCount} row(s) without full patient name.`)
+      if (failedCount > 0) summaryParts.push(`Failed ${failedCount} row(s).`)
+      setBatchSaveMessage(summaryParts.join(' '))
+    }
+    setBatchSaveLoading(false)
+  }
+
+  const exportBatchResultsCsv = () => {
+    if (batchResults.length === 0) return
+
+    const headers = [
+      'row_number',
+      'patient_first_name',
+      'patient_last_name',
+      'age',
+      'sex',
+      'cp',
+      'trestbps',
+      'chol',
+      'thalach',
+      'oldpeak',
+      'ca',
+      'risk_probability',
+      'risk_percent',
+      'risk_label',
+      'uncertainty_std',
+      'uncertainty_percent',
+      'confidence_interval_low',
+      'confidence_interval_high',
+    ]
+    const rows = batchResults.map((entry) => {
+      const clinical = entry?.clinical_inputs ?? {}
+      const prediction = entry?.prediction ?? {}
+      return [
+        entry?.row_number ?? '',
+        entry?.patient_first_name ?? '',
+        entry?.patient_last_name ?? '',
+        clinical.age ?? '',
+        clinical.sex ?? '',
+        clinical.cp ?? '',
+        clinical.trestbps ?? '',
+        clinical.chol ?? '',
+        clinical.thalach ?? '',
+        clinical.oldpeak ?? '',
+        clinical.ca ?? '',
+        prediction.risk_probability ?? '',
+        prediction.risk_percent ?? '',
+        prediction.risk_label ?? '',
+        prediction.uncertainty_std ?? '',
+        prediction.uncertainty_percent ?? '',
+        prediction?.confidence_interval_95?.[0] ?? '',
+        prediction?.confidence_interval_95?.[1] ?? '',
+      ]
+    })
+
+    const csv = [headers, ...rows].map((row) => row.map((value) => toCsvValue(value)).join(',')).join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+
+    link.href = downloadUrl
+    link.download = `batch_prediction_results_${timestamp}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(downloadUrl)
   }
 
   const updateRiskRule = (index, key, value) => {
@@ -398,13 +658,32 @@ function App() {
   }
 
   const addRiskRule = () => {
+    setRiskSettingsError('')
+    setRiskSettingsMessage('')
+    if (riskRules.length >= 20) {
+      setRiskSettingsError('You can define up to 20 rules.')
+      return
+    }
     const sorted = [...riskRules].sort((a, b) => Number(a.threshold) - Number(b.threshold))
     const nextThreshold = sorted.length > 0 ? Math.min(Number(sorted[sorted.length - 1].threshold) + 0.1, 1) : 0
     setRiskRules((previous) => [...previous, { threshold: Number(nextThreshold.toFixed(2)), label: 'Custom Risk' }])
   }
 
   const removeRiskRule = (index) => {
-    setRiskRules((previous) => (previous.length <= 1 ? previous : previous.filter((_, i) => i !== index)))
+    setRiskSettingsError('')
+    setRiskSettingsMessage('')
+    setRiskRules((previous) => {
+      if (previous.length <= 2) {
+        setRiskSettingsError('At least two rules are required.')
+        return previous
+      }
+      const nextRules = previous.filter((_, i) => i !== index)
+      if (!hasZeroThreshold(nextRules)) {
+        setRiskSettingsError('One threshold must be 0.')
+        return previous
+      }
+      return nextRules
+    })
   }
 
   const handleRiskSettingsSave = async (event) => {
@@ -415,8 +694,8 @@ function App() {
       threshold: Number(rule.threshold),
       label: String(rule.label ?? '').trim(),
     }))
-    if (normalized.length === 0) {
-      setRiskSettingsError('Add at least one rule.')
+    if (normalized.length < 2) {
+      setRiskSettingsError('Add at least two rules.')
       return
     }
     for (const rule of normalized) {
@@ -432,6 +711,10 @@ function App() {
     const unique = new Set(normalized.map((rule) => rule.threshold.toFixed(10)))
     if (unique.size !== normalized.length) {
       setRiskSettingsError('Thresholds must be unique.')
+      return
+    }
+    if (!hasZeroThreshold(normalized)) {
+      setRiskSettingsError('One threshold must be 0.')
       return
     }
     const sorted = [...normalized].sort((a, b) => a.threshold - b.threshold)
@@ -475,11 +758,24 @@ function App() {
     return /[",\r\n]/.test(raw) ? `"${raw.replace(/"/g, '""')}"` : raw
   }
 
-  const getRiskToneClass = (label) => {
-    const lowered = String(label ?? '').toLowerCase()
-    if (lowered.includes('high')) return 'high'
-    if (lowered.includes('medium')) return 'medium'
-    return 'low'
+  const getRiskToneClass = (label, rules) => {
+    const normalizedLabel = normalizeRiskLabel(label).toLowerCase()
+    const sortedRules = normalizeRules(rules)
+    if (sortedRules.length > 3) return ''
+
+    const lookup = new Map()
+    if (sortedRules.length === 2) {
+      lookup.set(normalizeRiskLabel(sortedRules[0].label).toLowerCase(), 'low')
+      lookup.set(normalizeRiskLabel(sortedRules[1].label).toLowerCase(), 'high')
+    } else if (sortedRules.length === 3) {
+      lookup.set(normalizeRiskLabel(sortedRules[0].label).toLowerCase(), 'low')
+      lookup.set(normalizeRiskLabel(sortedRules[1].label).toLowerCase(), 'medium')
+      lookup.set(normalizeRiskLabel(sortedRules[2].label).toLowerCase(), 'high')
+    } else {
+      return ''
+    }
+
+    return lookup.get(normalizedLabel) ?? ''
   }
 
   const toggleRiskLabelFilter = (label) => {
@@ -564,12 +860,18 @@ function App() {
   const liveAnnouncement = useMemo(() => {
     if (loading) return 'Calculating risk prediction.'
     if (saveLoading) return 'Saving prediction result.'
+    if (batchLoading) return 'Running batch prediction.'
+    if (batchSaveLoading) return 'Saving batch prediction results.'
     if (riskSettingsSaving) return 'Saving risk classification rules.'
     if (historyLoading) return 'Loading saved results.'
     if (error) return `Prediction error. ${error}`
     if (authError) return `Authentication error. ${authError}`
     if (saveError) return `Save error. ${saveError}`
+    if (batchError) return `Batch prediction error. ${batchError}`
+    if (batchSaveError) return `Batch save error. ${batchSaveError}`
     if (riskSettingsError) return `Risk settings error. ${riskSettingsError}`
+    if (saveSuccessDialogOpen) return 'Prediction saved successfully. Choose whether to clear the result view.'
+    if (batchSaveMessage) return batchSaveMessage
     if (saveMessage) return saveMessage
     if (riskSettingsMessage) return riskSettingsMessage
     if (result) return `Prediction complete. ${Number(result.risk_percent).toFixed(2)} percent risk, ${result.risk_label}.`
@@ -577,12 +879,18 @@ function App() {
   }, [
     loading,
     saveLoading,
+    batchLoading,
+    batchSaveLoading,
     riskSettingsSaving,
     historyLoading,
     error,
     authError,
     saveError,
+    batchError,
+    batchSaveError,
     riskSettingsError,
+    saveSuccessDialogOpen,
+    batchSaveMessage,
     saveMessage,
     riskSettingsMessage,
     result,
@@ -604,7 +912,7 @@ function App() {
               Log out
             </button>
           ) : (
-            <button type="button" className="logout-button" onClick={() => setAuthPanelOpen((prev) => !prev)}>
+            <button type="button" className="auth-cta-button" onClick={() => setAuthPanelOpen((prev) => !prev)}>
               {authPanelOpen ? 'Hide Login' : 'Sign In / Sign Up'}
             </button>
           )}
@@ -770,7 +1078,7 @@ function App() {
             </div>
           ) : result ? (
             <div className="result-content result-content-animate">
-              <p className={`risk-label ${getRiskToneClass(result.risk_label)}`}>{result.risk_label}</p>
+              <p className={`risk-label ${getRiskToneClass(result.risk_label, result?.risk_rules ?? riskRules)}`}>{result.risk_label}</p>
               <p className="risk-percent">{animatedRiskPercent.toFixed(2)}%</p>
               <div className="risk-meter">
                 <span style={{ width: `${Math.max(0, Math.min(animatedRiskPercent, 100))}%` }} />
@@ -821,6 +1129,115 @@ function App() {
           )}
         </aside>
       </main>
+
+      <section className="panel batch-upload-panel reveal delay-4" aria-busy={batchLoading}>
+        <div className="batch-upload-head">
+          <h2>Batch Prediction (CSV)</h2>
+          <button type="button" className="refresh-history-button" onClick={downloadBatchCsvTemplate}>
+            Download CSV Template
+          </button>
+        </div>
+        <p className="auth-inline-copy">
+          Required CSV columns: {BATCH_TEMPLATE_HEADERS.join(', ')}
+        </p>
+        <div className="batch-upload-controls">
+          <label className="field">
+            <span>Patient CSV file</span>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(event) => {
+                setBatchFile(event.target.files?.[0] ?? null)
+                setBatchError('')
+                setBatchMessage('')
+                setBatchSaveError('')
+                setBatchSaveMessage('')
+              }}
+            />
+          </label>
+          <button type="button" className="save-result-button" onClick={runBatchPrediction} disabled={batchLoading}>
+            {batchLoading ? 'Running...' : 'Run Batch Prediction'}
+          </button>
+        </div>
+        {batchError && <p className="error" role="alert">{batchError}</p>}
+        {batchMessage && <p className="save-message">{batchMessage}</p>}
+        {batchSaveError && <p className="error" role="alert">{batchSaveError}</p>}
+        {batchSaveMessage && <p className="save-message">{batchSaveMessage}</p>}
+
+        {batchResults.length > 0 && (
+          <>
+            <div className="saved-results-head">
+              <h3>Batch Results</h3>
+              <div className="saved-results-actions">
+                <button type="button" className="export-history-button" onClick={exportBatchResultsCsv}>
+                  Export Batch CSV
+                </button>
+                {authUser ? (
+                  <button
+                    type="button"
+                    className="save-result-button"
+                    onClick={saveBatchResultsToHistory}
+                    disabled={batchSaveLoading}
+                  >
+                    {batchSaveLoading ? 'Saving Batch...' : 'Save Batch Results'}
+                  </button>
+                ) : (
+                  <p className="metric login-hint">Sign in to save batch results.</p>
+                )}
+              </div>
+            </div>
+            <div className="saved-results-table-shell">
+              <table className="saved-results-table">
+                <caption className="sr-only">Batch prediction output for uploaded CSV rows.</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Classification</th>
+                    <th scope="col">CSV Row</th>
+                    <th scope="col">Patient First Name</th>
+                    <th scope="col">Patient Last Name</th>
+                    <th scope="col">Age</th>
+                    <th scope="col">Sex</th>
+                    <th scope="col">Chest Pain</th>
+                    <th scope="col">Resting BP</th>
+                    <th scope="col">Cholesterol</th>
+                    <th scope="col">Max HR</th>
+                    <th scope="col">Oldpeak</th>
+                    <th scope="col">Vessels (CA)</th>
+                    <th scope="col">Risk %</th>
+                    <th scope="col">Risk Probability</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batchResults.map((entry) => {
+                    const prediction = entry?.prediction ?? {}
+                    const riskLabel = normalizeRiskLabel(prediction?.risk_label)
+                    return (
+                      <tr key={`batch-row-${entry.row_number}`}>
+                        <td>
+                          <span className={`saved-risk-chip ${getRiskToneClass(riskLabel, prediction?.risk_rules ?? riskRules)}`}>{riskLabel}</span>
+                        </td>
+                        <td>{entry?.row_number ?? '-'}</td>
+                        <td>{entry?.patient_first_name || '-'}</td>
+                        <td>{entry?.patient_last_name || '-'}</td>
+                        <td>{entry?.clinical_inputs?.age ?? '-'}</td>
+                        <td>{entry?.clinical_inputs?.sex ?? '-'}</td>
+                        <td>{entry?.clinical_inputs?.cp ?? '-'}</td>
+                        <td>{entry?.clinical_inputs?.trestbps ?? '-'}</td>
+                        <td>{entry?.clinical_inputs?.chol ?? '-'}</td>
+                        <td>{entry?.clinical_inputs?.thalach ?? '-'}</td>
+                        <td>{entry?.clinical_inputs?.oldpeak ?? '-'}</td>
+                        <td>{entry?.clinical_inputs?.ca ?? '-'}</td>
+                        <td>{formatMetric(prediction?.risk_percent)}%</td>
+                        <td>{formatMetric(prediction?.risk_probability, 4)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </section>
 
       {authUser && (
         <section className="panel saved-results-panel reveal delay-4" aria-busy={historyLoading}>
@@ -889,6 +1306,7 @@ function App() {
                     </caption>
                     <thead>
                       <tr>
+                        <th scope="col">Classification</th>
                         <th scope="col">Date</th>
                         <th scope="col">Patient First Name</th>
                         <th scope="col">Patient Last Name</th>
@@ -902,7 +1320,6 @@ function App() {
                         <th scope="col">Vessels (CA)</th>
                         <th scope="col">Risk %</th>
                         <th scope="col">Risk Probability</th>
-                        <th scope="col">Classification</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -910,6 +1327,9 @@ function App() {
                         const riskLabel = normalizeRiskLabel(entry?.risk_label)
                         return (
                           <tr key={entry.id}>
+                            <td>
+                              <span className={`saved-risk-chip ${getRiskToneClass(riskLabel, riskRules)}`}>{riskLabel}</span>
+                            </td>
                             <td>{formatSavedDate(entry.created_at)}</td>
                             <td>{entry?.patient_first_name || '-'}</td>
                             <td>{entry?.patient_last_name || '-'}</td>
@@ -923,9 +1343,6 @@ function App() {
                             <td>{getClinicalInputValue(entry, 'ca')}</td>
                             <td>{formatMetric(entry.risk_percent)}%</td>
                             <td>{formatMetric(entry.risk_probability, 4)}</td>
-                            <td>
-                              <span className={`saved-risk-chip ${getRiskToneClass(riskLabel)}`}>{riskLabel}</span>
-                            </td>
                           </tr>
                         )
                       })}
@@ -936,6 +1353,35 @@ function App() {
             </>
           )}
         </section>
+      )}
+
+      {saveSuccessDialogOpen && (
+        <div className="save-success-backdrop" role="presentation">
+          <section
+            className="save-success-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-success-title"
+          >
+            <h2 id="save-success-title">Prediction Saved</h2>
+            <p>Your prediction result was saved successfully.</p>
+            <div className="save-success-actions">
+              <button type="button" onClick={() => setSaveSuccessDialogOpen(false)}>
+                Keep Result View
+              </button>
+              <button
+                type="button"
+                className="clear-view-button"
+                onClick={() => {
+                  clearPredictionView()
+                  setSaveSuccessDialogOpen(false)
+                }}
+              >
+                Clear Result View
+              </button>
+            </div>
+          </section>
+        </div>
       )}
 
     </div>

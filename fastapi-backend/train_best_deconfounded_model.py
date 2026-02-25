@@ -193,7 +193,7 @@ def run_training(n_bootstrap: int) -> Tuple[Path, Dict[str, Any]]:
         "selection_table": evaluation_rows,
     }
 
-    model_dir = repo_root / "backend" / "models"
+    model_dir = repo_root / "fastapi-backend" / "models"
     model_dir.mkdir(parents=True, exist_ok=True)
     model_path = model_dir / "best_deconfounded_model.joblib"
     joblib.dump(artifact, model_path)

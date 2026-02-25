@@ -111,12 +111,19 @@ class PredictionRequest(APIModel):
     def validate_rule_set(self) -> "PredictionRequest":
         if not self.risk_rules:
             return self
+        if len(self.risk_rules) < 2:
+            raise ValueError("At least two rules are required.")
         seen: set[float] = set()
+        has_zero_threshold = False
         for rule in self.risk_rules:
             key = round(rule.threshold, 10)
             if key in seen:
                 raise ValueError("Threshold values must be unique.")
             seen.add(key)
+            if abs(rule.threshold) <= 1e-10:
+                has_zero_threshold = True
+        if not has_zero_threshold:
+            raise ValueError("One threshold must be 0.")
         return self
 
 
@@ -130,6 +137,19 @@ class PredictionResponse(APIModel):
     model_name: str
     training_source: str
     risk_rules: List[RiskRule]
+
+
+class BatchPredictionRecord(APIModel):
+    row_number: int
+    patient_first_name: str | None = None
+    patient_last_name: str | None = None
+    clinical_inputs: PredictionInput
+    prediction: PredictionResponse
+
+
+class BatchPredictionResponse(APIModel):
+    total_rows: int
+    predictions: List[BatchPredictionRecord]
 
 
 class HealthResponse(APIModel):
@@ -166,16 +186,21 @@ class MessageResponse(APIModel):
 
 
 class RiskClassificationRulesUpsertRequest(APIModel):
-    rules: List[RiskRule] = Field(..., min_length=1, max_length=20)
+    rules: List[RiskRule] = Field(..., min_length=2, max_length=20)
 
     @model_validator(mode="after")
     def validate_rule_set(self) -> "RiskClassificationRulesUpsertRequest":
         seen: set[float] = set()
+        has_zero_threshold = False
         for rule in self.rules:
             key = round(rule.threshold, 10)
             if key in seen:
                 raise ValueError("Threshold values must be unique.")
             seen.add(key)
+            if abs(rule.threshold) <= 1e-10:
+                has_zero_threshold = True
+        if not has_zero_threshold:
+            raise ValueError("One threshold must be 0.")
         return self
 
 

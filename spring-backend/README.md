@@ -6,12 +6,21 @@ This service handles app auth/session and CRUD operations against Supabase Postg
 
 ```powershell
 cd spring-backend
-mvn spring-boot:run
+# one-time setup (optional if you already keep values in ../fastapi-backend/.env)
+Copy-Item .env.example .env
+# then edit .env with your real Supabase values
+.\mvnw.cmd spring-boot:run
 ```
 
 Default port: `8080`
 
-## Required environment variables
+Spring Boot auto-loads:
+
+- `spring-backend/.env`
+- `../.env`
+- `../fastapi-backend/.env`
+
+## Required configuration values
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`

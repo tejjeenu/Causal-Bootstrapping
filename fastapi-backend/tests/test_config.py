@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from backend.app.config import _parse_bool, _parse_samesite, get_settings
+from app.config import _parse_bool, _parse_samesite, get_settings
 
 
 def test_parse_bool_true_variants():
@@ -37,6 +37,7 @@ def test_get_settings_defaults(monkeypatch):
         "AUTH_COOKIE_SECURE",
         "AUTH_COOKIE_SAMESITE",
         "CORS_ORIGINS",
+        "INFERENCE_CACHE_SIZE",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -49,6 +50,7 @@ def test_get_settings_defaults(monkeypatch):
     assert settings.auth_cookie_secure is False
     assert settings.auth_cookie_samesite == "lax"
     assert settings.cors_origins == ("http://localhost:5173", "http://127.0.0.1:5173")
+    assert settings.inference_cache_size == 512
 
 
 def test_get_settings_reads_env(monkeypatch):
@@ -60,6 +62,7 @@ def test_get_settings_reads_env(monkeypatch):
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "true")
     monkeypatch.setenv("AUTH_COOKIE_SAMESITE", "strict")
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000, https://app.example.com")
+    monkeypatch.setenv("INFERENCE_CACHE_SIZE", "2048")
 
     get_settings.cache_clear()
     settings = get_settings()
@@ -72,3 +75,5 @@ def test_get_settings_reads_env(monkeypatch):
     assert settings.auth_cookie_secure is True
     assert settings.auth_cookie_samesite == "strict"
     assert settings.cors_origins == ("http://localhost:3000", "https://app.example.com")
+    assert settings.inference_cache_size == 2048
+

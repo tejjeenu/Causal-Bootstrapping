@@ -6,6 +6,6 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record RiskSettingsUpsertRequest(
-    @NotEmpty @Size(max = 20) List<@Valid RiskRule> rules
+    @NotEmpty @Size(min = 2, max = 20) List<@Valid RiskRule> rules
 ) {
 }

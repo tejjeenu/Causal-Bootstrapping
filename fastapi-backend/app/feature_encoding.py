@@ -74,7 +74,7 @@ ENCODED_FEATURE_COLUMNS: List[str] = [
 
 def _resolve_normalization_settings_path() -> Path:
     repo_root = Path(__file__).resolve().parents[2]
-    default_path = repo_root / "backend" / "models" / "initial_eda_normalization_settings.json"
+    default_path = repo_root / "fastapi-backend" / "models" / "initial_eda_normalization_settings.json"
     configured_path = os.getenv("NORMALIZATION_SETTINGS_PATH")
     return Path(configured_path) if configured_path else default_path
 

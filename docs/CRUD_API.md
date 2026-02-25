@@ -12,10 +12,19 @@ This service owns:
 
 ```powershell
 cd spring-backend
-mvn spring-boot:run
+# one-time setup (optional if values already exist in ../fastapi-backend/.env)
+Copy-Item .env.example .env
+# edit .env with your Supabase values
+.\mvnw.cmd spring-boot:run
 ```
 
-Required environment variables:
+The service auto-loads:
+
+- `spring-backend/.env`
+- `../.env`
+- `../fastapi-backend/.env`
+
+Required configuration values:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
@@ -41,6 +50,13 @@ Optional:
 - `GET /results`
 - `POST /results`
 - `PATCH /results/{resultId}`
+
+`PUT /risk-settings` rule constraints:
+
+- at least 2 rules
+- thresholds must be unique
+- one threshold must be `0`
+- thresholds must remain in `[0, 1]`
 
 ## Save Result Payload
 

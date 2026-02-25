@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app import config, feature_encoding, model_store
-from backend.app.config import Settings
+from app import config, feature_encoding, model_store
+from app.config import Settings
 
 
 @pytest.fixture(autouse=True)
@@ -57,3 +57,4 @@ def save_payload(prediction_payload: dict) -> dict:
         "patient_last_name": "Lovelace",
         "clinical_inputs": prediction_payload,
     }
+

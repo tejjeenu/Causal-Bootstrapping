@@ -3,23 +3,35 @@
 ## 1) Start FastAPI ML inference service
 
 ```powershell
+cd fastapi-backend
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r backend\requirements.txt
-uvicorn backend.app.main:app --reload --port 8000
+python -m pip install -r requirements.txt
+# optional: tune inference cache size per process (default 512)
+# $env:INFERENCE_CACHE_SIZE=1024
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+If you see `Form data requires "python-multipart" to be installed`, your terminal is usually using mixed Python environments. Re-run:
+
+```powershell
+cd fastapi-backend
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 ## 2) Start Spring Boot CRUD service
 
+In another terminal:
+
 ```powershell
 cd spring-backend
-mvn spring-boot:run
+# one-time setup (optional if values already exist in ../fastapi-backend/.env)
+Copy-Item .env.example .env
+# edit .env with your Supabase values
+.\mvnw.cmd spring-boot:run
 ```
-
-Before running Spring Boot, set these environment variables:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
 
 Optional:
 
@@ -56,5 +68,9 @@ Run the table/RLS SQL from [`spring-backend/README.md`](spring-backend/README.md
 
 ## API ownership summary
 
-- FastAPI: inference only (`/health`, `/model-info`, `/predict`)
+- FastAPI: inference only (`/health`, `/model-info`, `/predict`, `/predict/batch-csv`)
 - Spring Boot: auth + CRUD (`/auth/*`, `/risk-settings`, `/results`)
+
+For standalone/third-party ML API integrations (Python, Node.js, batch jobs), see [`docs/ML_API.md`](docs/ML_API.md).
+
+The frontend includes a **Batch Prediction (CSV)** panel with a downloadable CSV template for multi-patient inference.

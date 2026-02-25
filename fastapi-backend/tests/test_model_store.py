@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from backend.app.model_store import (
+from app.model_store import (
     ModelBundle,
     _estimate_input_jitter_uncertainty,
     _predict_proba,
@@ -114,7 +114,7 @@ def test_predict_with_uncertainty_uses_binomial_fallback_when_jitter_zero(monkey
         feature_columns=[],
         selection_metrics={},
     )
-    monkeypatch.setattr("backend.app.model_store._estimate_input_jitter_uncertainty", lambda *_args, **_kwargs: 0.0)
+    monkeypatch.setattr("app.model_store._estimate_input_jitter_uncertainty", lambda *_args, **_kwargs: 0.0)
 
     mean_probability, uncertainty_std = predict_with_uncertainty(bundle, _features())
     assert mean_probability == pytest.approx(0.8)
@@ -143,7 +143,7 @@ def test_load_model_bundle_supports_dict_artifact(monkeypatch, tmp_path):
         "feature_columns": ["f1", "f2"],
         "selection_metrics": {"auc": 0.9},
     }
-    monkeypatch.setattr("backend.app.model_store.joblib.load", lambda _path: artifact)
+    monkeypatch.setattr("app.model_store.joblib.load", lambda _path: artifact)
     load_model_bundle.cache_clear()
 
     bundle = load_model_bundle()
@@ -152,3 +152,4 @@ def test_load_model_bundle_supports_dict_artifact(monkeypatch, tmp_path):
     assert bundle.feature_columns == ["f1", "f2"]
     assert bundle.selection_metrics == {"auc": 0.9}
     assert len(bundle.bootstrap_models) == 1
+

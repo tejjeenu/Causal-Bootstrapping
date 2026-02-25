@@ -143,7 +143,7 @@ This project provides a **causal stress test** for medical machine learning mode
 
 The web application now uses two backend services:
 
-- FastAPI (`backend/`): ML inference only
+- FastAPI (`fastapi-backend/`): ML inference only
 - Spring Boot (`spring-backend/`): auth + Supabase CRUD only
 
 See:

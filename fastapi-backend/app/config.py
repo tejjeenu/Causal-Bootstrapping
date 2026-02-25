@@ -22,6 +22,16 @@ def _parse_samesite(value: str | None) -> str:
     return normalized if normalized in {"lax", "strict", "none"} else "lax"
 
 
+def _parse_non_negative_int(value: str | None, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        parsed = int(value.strip())
+    except ValueError:
+        return default
+    return parsed if parsed >= 0 else default
+
+
 @dataclass(frozen=True)
 class Settings:
     supabase_url: str
@@ -32,6 +42,7 @@ class Settings:
     auth_cookie_secure: bool
     auth_cookie_samesite: str
     cors_origins: tuple[str, ...]
+    inference_cache_size: int = 512
 
 
 @lru_cache(maxsize=1)
@@ -51,4 +62,5 @@ def get_settings() -> Settings:
         auth_cookie_secure=_parse_bool(os.getenv("AUTH_COOKIE_SECURE"), default=False),
         auth_cookie_samesite=_parse_samesite(os.getenv("AUTH_COOKIE_SAMESITE", "lax")),
         cors_origins=origins,
+        inference_cache_size=_parse_non_negative_int(os.getenv("INFERENCE_CACHE_SIZE"), default=512),
     )

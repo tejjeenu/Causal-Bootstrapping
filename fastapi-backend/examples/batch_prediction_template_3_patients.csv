@@ -1,0 +1,4 @@
+patient_first_name,patient_last_name,age,trestbps,chol,thalach,oldpeak,ca,sex,cp,fbs,restecg,exang,slope,thal
+Ada,Lovelace,58,132,224,173,3.2,2,Male,Asymptomatic,<=120,Normal ECG,Yes Ex Angina,Flat,Reversible Defect
+Grace,Hopper,54,128,210,165,1.8,1,Female,Atypical Angina,<=120,Normal ECG,No Ex Angina,Upsloping,Normal
+Alan,Turing,63,145,260,150,2.6,3,Male,Typical Angina,>120,ST-T Abnormality,Yes Ex Angina,Downsloping,Fixed Defect

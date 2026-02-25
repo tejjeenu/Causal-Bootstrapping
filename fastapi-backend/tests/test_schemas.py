@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from backend.app.schemas import PredictionRequest, RiskClassificationRulesUpsertRequest, SavePredictionRequest
+from app.schemas import PredictionRequest, RiskClassificationRulesUpsertRequest, SavePredictionRequest
 
 
 def test_save_prediction_request_strips_patient_names(prediction_payload):
@@ -36,6 +36,25 @@ def test_risk_rule_upsert_rejects_duplicate_thresholds():
         )
 
 
+def test_risk_rule_upsert_requires_zero_threshold():
+    with pytest.raises(ValidationError, match="One threshold must be 0"):
+        RiskClassificationRulesUpsertRequest(
+            rules=[
+                {"threshold": 0.3, "label": "Low"},
+                {"threshold": 0.7, "label": "High"},
+            ]
+        )
+
+
+def test_risk_rule_upsert_requires_at_least_two_rules():
+    with pytest.raises(ValidationError):
+        RiskClassificationRulesUpsertRequest(
+            rules=[
+                {"threshold": 0.0, "label": "Low"},
+            ]
+        )
+
+
 def test_prediction_request_rejects_duplicate_custom_thresholds(prediction_payload):
     with pytest.raises(ValidationError, match="Threshold values must be unique"):
         PredictionRequest(
@@ -45,3 +64,25 @@ def test_prediction_request_rejects_duplicate_custom_thresholds(prediction_paylo
                 {"threshold": 0.20000000001, "label": "Medium"},
             ],
         )
+
+
+def test_prediction_request_requires_zero_threshold(prediction_payload):
+    with pytest.raises(ValidationError, match="One threshold must be 0"):
+        PredictionRequest(
+            clinical_inputs=prediction_payload,
+            risk_rules=[
+                {"threshold": 0.2, "label": "Low"},
+                {"threshold": 0.6, "label": "High"},
+            ],
+        )
+
+
+def test_prediction_request_requires_at_least_two_rules(prediction_payload):
+    with pytest.raises(ValidationError, match="At least two rules are required"):
+        PredictionRequest(
+            clinical_inputs=prediction_payload,
+            risk_rules=[
+                {"threshold": 0.0, "label": "Low"},
+            ],
+        )
+

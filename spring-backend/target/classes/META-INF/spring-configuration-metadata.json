@@ -15,37 +15,44 @@
     {
       "name": "app.auth-cookie-name",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
+      "defaultValue": "cb_auth_token"
     },
     {
       "name": "app.auth-cookie-same-site",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
+      "defaultValue": "Lax"
     },
     {
       "name": "app.auth-cookie-secure",
       "type": "java.lang.Boolean",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
+      "defaultValue": false
     },
     {
       "name": "app.supabase-anon-key",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
+      "defaultValue": ""
     },
     {
       "name": "app.supabase-results-table",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
+      "defaultValue": "prediction_results"
     },
     {
       "name": "app.supabase-risk-settings-table",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
+      "defaultValue": "risk_classification_settings"
     },
     {
       "name": "app.supabase-url",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
+      "defaultValue": ""
     }
   ],
   "hints": []

@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 
-from backend.app.feature_encoding import (
+from app.feature_encoding import (
     ENCODED_FEATURE_COLUMNS,
     _transform_numeric_features,
     encode_single_record,
@@ -110,3 +110,4 @@ def test_transform_numeric_features_rejects_zero_scale():
 
     with pytest.raises(ValueError, match="Scale for feature 'chol' is 0"):
         _transform_numeric_features(numeric, settings)
+

@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class SupabaseCrudService {
     private static final int DEFAULT_LIMIT = 50;
+    private static final double ZERO_THRESHOLD_TOLERANCE = 1e-10;
 
     private final ApplicationProperties properties;
     private final SupabaseClientService supabaseClientService;
@@ -282,13 +283,17 @@ public class SupabaseCrudService {
     }
 
     private void validateRuleSet(List<RiskRule> rules) {
-        if (rules == null || rules.isEmpty()) {
-            throw new ApiException(400, "Add at least one rule.");
+        if (rules == null || rules.size() < 2) {
+            throw new ApiException(400, "Add at least two rules.");
         }
         Set<Double> seen = new HashSet<>();
+        boolean hasZeroThreshold = false;
         for (RiskRule rule : rules) {
             if (rule.threshold() < 0 || rule.threshold() > 1) {
                 throw new ApiException(400, "Thresholds must be between 0 and 1.");
+            }
+            if (Math.abs(rule.threshold()) <= ZERO_THRESHOLD_TOLERANCE) {
+                hasZeroThreshold = true;
             }
             String label = rule.label() == null ? "" : rule.label().trim();
             if (label.isEmpty()) {
@@ -298,6 +303,9 @@ public class SupabaseCrudService {
             if (!seen.add(key)) {
                 throw new ApiException(400, "Threshold values must be unique.");
             }
+        }
+        if (!hasZeroThreshold) {
+            throw new ApiException(400, "One threshold must be 0.");
         }
     }
 

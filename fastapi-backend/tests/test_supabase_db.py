@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.config import Settings
-from backend.app.supabase_db import (
+from app.config import Settings
+from app.supabase_db import (
     SupabaseDBError,
     _classify_probability,
     _normalize_rule_thresholds,
@@ -76,7 +76,7 @@ def test_insert_prediction_result_includes_patient_name_fields(monkeypatch):
         captured["payload"] = payload
         return [{"id": "row-1"}]
 
-    monkeypatch.setattr("backend.app.supabase_db._rest_request", _fake_rest_request)
+    monkeypatch.setattr("app.supabase_db._rest_request", _fake_rest_request)
 
     row = insert_prediction_result(
         _settings(),
@@ -104,7 +104,7 @@ def test_list_prediction_results_requests_patient_name_columns(monkeypatch):
         captured["path"] = path
         return []
 
-    monkeypatch.setattr("backend.app.supabase_db._rest_request", _fake_rest_request)
+    monkeypatch.setattr("app.supabase_db._rest_request", _fake_rest_request)
     rows = list_prediction_results(_settings(), access_token="token", limit=10)
 
     assert rows == []
@@ -123,7 +123,7 @@ def test_sync_prediction_result_labels_updates_mismatched_rows(monkeypatch):
             return {}
         raise AssertionError(f"Unexpected method: {method}")
 
-    monkeypatch.setattr("backend.app.supabase_db._rest_request", _fake_rest_request)
+    monkeypatch.setattr("app.supabase_db._rest_request", _fake_rest_request)
 
     updated_count = sync_prediction_result_labels(
         _settings(),
@@ -141,7 +141,7 @@ def test_sync_prediction_result_labels_rejects_invalid_probability(monkeypatch):
             return [{"id": "row-1", "risk_probability": "not-a-number", "risk_label": "Low"}]
         raise AssertionError("PATCH should not be called for invalid row")
 
-    monkeypatch.setattr("backend.app.supabase_db._rest_request", _fake_rest_request)
+    monkeypatch.setattr("app.supabase_db._rest_request", _fake_rest_request)
 
     with pytest.raises(SupabaseDBError, match="invalid 'risk_probability'"):
         sync_prediction_result_labels(
@@ -149,3 +149,4 @@ def test_sync_prediction_result_labels_rejects_invalid_probability(monkeypatch):
             access_token="token",
             rules=[{"threshold": 0.0, "label": "Low"}],
         )
+

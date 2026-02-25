@@ -4,7 +4,7 @@
 
 The application is now split into **two backend services**:
 
-- **FastAPI (`backend/`)**: ML model inference only (`/health`, `/model-info`, `/predict`)
+- **FastAPI (`fastapi-backend/`)**: ML model inference only (`/health`, `/model-info`, `/predict`)
 - **Spring Boot (`spring-backend/`)**: Supabase auth + CRUD over Postgres tables (`/auth/*`, `/risk-settings`, `/results`)
 
 This separation allows the ML API to run standalone and be reused by other clients without coupling to app-specific persistence.
@@ -53,6 +53,7 @@ sequenceDiagram
   - `GET /health`
   - `GET /model-info`
   - `POST /predict`
+  - `POST /predict/batch-csv`
 
 - **Spring Boot CRUD API**
   - `POST /auth/signup`

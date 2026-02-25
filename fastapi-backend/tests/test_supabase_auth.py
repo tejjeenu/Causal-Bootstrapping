@@ -6,8 +6,8 @@ from urllib.error import HTTPError, URLError
 
 import pytest
 
-from backend.app.config import Settings
-from backend.app.supabase_auth import (
+from app.config import Settings
+from app.supabase_auth import (
     SupabaseAuthError,
     _auth_request,
     ensure_supabase_auth_config,
@@ -60,7 +60,7 @@ def test_ensure_supabase_auth_config_requires_values():
 
 
 def test_auth_request_success(monkeypatch):
-    monkeypatch.setattr("backend.app.supabase_auth.urlopen", lambda _req, timeout=15: _FakeResponse({"ok": True}))
+    monkeypatch.setattr("app.supabase_auth.urlopen", lambda _req, timeout=15: _FakeResponse({"ok": True}))
 
     data = _auth_request(_settings(), method="GET", path="user")
     assert data == {"ok": True}
@@ -78,7 +78,7 @@ def test_auth_request_http_error_uses_payload_detail(monkeypatch):
     def _raise_error(_req, timeout=15):
         raise error
 
-    monkeypatch.setattr("backend.app.supabase_auth.urlopen", _raise_error)
+    monkeypatch.setattr("app.supabase_auth.urlopen", _raise_error)
 
     with pytest.raises(SupabaseAuthError) as exc_info:
         _auth_request(_settings(), method="GET", path="user")
@@ -91,7 +91,7 @@ def test_auth_request_url_error(monkeypatch):
     def _raise_error(_req, timeout=15):
         raise URLError("network down")
 
-    monkeypatch.setattr("backend.app.supabase_auth.urlopen", _raise_error)
+    monkeypatch.setattr("app.supabase_auth.urlopen", _raise_error)
 
     with pytest.raises(SupabaseAuthError) as exc_info:
         _auth_request(_settings(), method="GET", path="user")
@@ -110,10 +110,11 @@ def test_sign_in_with_password_uses_password_grant(monkeypatch):
         seen["access_token"] = access_token
         return {"access_token": "token"}
 
-    monkeypatch.setattr("backend.app.supabase_auth._auth_request", _fake_auth_request)
+    monkeypatch.setattr("app.supabase_auth._auth_request", _fake_auth_request)
 
     result = sign_in_with_password(_settings(), email="a@example.com", password="secret123")
     assert result == {"access_token": "token"}
     assert seen["method"] == "POST"
     assert seen["path"] == "token?grant_type=password"
     assert seen["payload"] == {"email": "a@example.com", "password": "secret123"}
+
