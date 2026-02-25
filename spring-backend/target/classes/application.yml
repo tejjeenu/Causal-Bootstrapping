@@ -1,0 +1,12 @@
+server:
+  port: ${CRUD_API_PORT:8080}
+
+app:
+  supabase-url: ${SUPABASE_URL:}
+  supabase-anon-key: ${SUPABASE_ANON_KEY:}
+  supabase-results-table: ${SUPABASE_RESULTS_TABLE:prediction_results}
+  supabase-risk-settings-table: ${SUPABASE_RISK_SETTINGS_TABLE:risk_classification_settings}
+  auth-cookie-name: ${AUTH_COOKIE_NAME:cb_auth_token}
+  auth-cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  auth-cookie-same-site: ${AUTH_COOKIE_SAMESITE:Lax}
+  allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
