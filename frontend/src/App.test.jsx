@@ -51,7 +51,7 @@ afterEach(() => {
 
 test('auth mode switch card toggles modern sign-up/sign-in copy', async () => {
   globalThis.fetch = createFetchMock({
-    'GET /api/auth/me': { body: { authenticated: false, user: null } },
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
   })
 
   render(<App />)
@@ -67,8 +67,8 @@ test('auth mode switch card toggles modern sign-up/sign-in copy', async () => {
 
 test('predict flow renders result card', async () => {
   globalThis.fetch = createFetchMock({
-    'GET /api/auth/me': { body: { authenticated: false, user: null } },
-    'POST /api/predict': { body: predictionResponse },
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+    'POST /ml-api/predict': { body: predictionResponse },
   })
 
   render(<App />)
@@ -80,7 +80,7 @@ test('predict flow renders result card', async () => {
 
 test('form validation shows numeric-range error', async () => {
   globalThis.fetch = createFetchMock({
-    'GET /api/auth/me': { body: { authenticated: false, user: null } },
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
   })
 
   render(<App />)
@@ -92,10 +92,10 @@ test('form validation shows numeric-range error', async () => {
 
 test('save flow requires patient first and last name', async () => {
   globalThis.fetch = createFetchMock({
-    'GET /api/auth/me': { body: { authenticated: true, user: { id: 'u1', email: 'u@example.com' } } },
-    'GET /api/risk-settings': { body: { rules: defaultRules } },
-    'GET /api/results': { body: { results: [] } },
-    'POST /api/predict': { body: predictionResponse },
+    'GET /crud-api/auth/me': { body: { authenticated: true, user: { id: 'u1', email: 'u@example.com' } } },
+    'GET /crud-api/risk-settings': { body: { rules: defaultRules } },
+    'GET /crud-api/results': { body: { results: [] } },
+    'POST /ml-api/predict': { body: predictionResponse },
   })
 
   render(<App />)
@@ -110,11 +110,11 @@ test('save flow requires patient first and last name', async () => {
 test('save flow posts patient name fields and shows saved confirmation', async () => {
   let saveRequestBody = null
   globalThis.fetch = createFetchMock({
-    'GET /api/auth/me': { body: { authenticated: true, user: { id: 'u1', email: 'u@example.com' } } },
-    'GET /api/risk-settings': { body: { rules: defaultRules } },
-    'GET /api/results': { body: { results: [] } },
-    'POST /api/predict': { body: predictionResponse },
-    'POST /api/results': ({ options }) => {
+    'GET /crud-api/auth/me': { body: { authenticated: true, user: { id: 'u1', email: 'u@example.com' } } },
+    'GET /crud-api/risk-settings': { body: { rules: defaultRules } },
+    'GET /crud-api/results': { body: { results: [] } },
+    'POST /ml-api/predict': { body: predictionResponse },
+    'POST /crud-api/results': ({ options }) => {
       saveRequestBody = JSON.parse(options.body)
       return jsonResponse({
         id: 'saved-1',
@@ -149,9 +149,9 @@ test('save flow posts patient name fields and shows saved confirmation', async (
 
 test('authenticated users can see saved patient names in history table', async () => {
   globalThis.fetch = createFetchMock({
-    'GET /api/auth/me': { body: { authenticated: true, user: { id: 'u1', email: 'u@example.com' } } },
-    'GET /api/risk-settings': { body: { rules: defaultRules } },
-    'GET /api/results': {
+    'GET /crud-api/auth/me': { body: { authenticated: true, user: { id: 'u1', email: 'u@example.com' } } },
+    'GET /crud-api/risk-settings': { body: { rules: defaultRules } },
+    'GET /crud-api/results': {
       body: {
         results: [
           {

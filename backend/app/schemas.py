@@ -103,6 +103,23 @@ class RiskRule(APIModel):
     label: str = Field(..., min_length=1, max_length=60)
 
 
+class PredictionRequest(APIModel):
+    clinical_inputs: PredictionInput
+    risk_rules: List[RiskRule] | None = None
+
+    @model_validator(mode="after")
+    def validate_rule_set(self) -> "PredictionRequest":
+        if not self.risk_rules:
+            return self
+        seen: set[float] = set()
+        for rule in self.risk_rules:
+            key = round(rule.threshold, 10)
+            if key in seen:
+                raise ValueError("Threshold values must be unique.")
+            seen.add(key)
+        return self
+
+
 class PredictionResponse(APIModel):
     risk_probability: float
     risk_percent: float

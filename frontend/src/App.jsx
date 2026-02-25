@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const LEGACY_API_BASE = import.meta.env.VITE_API_BASE_URL
+const ML_API_BASE = import.meta.env.VITE_ML_API_BASE_URL ?? LEGACY_API_BASE ?? '/ml-api'
+const CRUD_API_BASE = import.meta.env.VITE_CRUD_API_BASE_URL ?? LEGACY_API_BASE ?? '/crud-api'
 
 const NUMERIC_FIELDS = [
   { key: 'age', label: 'Age', min: 1, max: 120, step: 1 },
@@ -117,9 +119,9 @@ function App() {
     }
   }, [result])
 
-  const apiFetch = (path, options = {}) => {
+  const createApiFetch = (baseUrl) => (path, options = {}) => {
     const shouldSetJsonHeader = options.body !== undefined
-    return fetch(`${API_BASE}${path}`, {
+    return fetch(`${baseUrl}${path}`, {
       credentials: 'include',
       ...options,
       headers: {
@@ -128,6 +130,8 @@ function App() {
       },
     })
   }
+  const mlApiFetch = createApiFetch(ML_API_BASE)
+  const crudApiFetch = createApiFetch(CRUD_API_BASE)
 
   const normalizeRules = (rules) => {
     if (!Array.isArray(rules) || rules.length === 0) return DEFAULT_RULES
@@ -169,7 +173,7 @@ function App() {
     setHistoryLoading(true)
     setHistoryError('')
     try {
-      const response = await apiFetch('/results')
+      const response = await crudApiFetch('/results')
       const body = await response.json()
       if (!response.ok) {
         setHistoryError(body?.detail || 'Unable to load saved results.')
@@ -191,7 +195,7 @@ function App() {
     setRiskSettingsLoading(true)
     setRiskSettingsError('')
     try {
-      const response = await apiFetch('/risk-settings')
+      const response = await crudApiFetch('/risk-settings')
       const body = await response.json()
       if (!response.ok) {
         setRiskSettingsError(body?.detail || 'Unable to load risk rules.')
@@ -208,7 +212,7 @@ function App() {
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await apiFetch('/auth/me')
+        const response = await crudApiFetch('/auth/me')
         if (response.ok) {
           const body = await response.json()
           setAuthUser(body?.authenticated ? body.user : null)
@@ -254,7 +258,7 @@ function App() {
     setAuthLoading(true)
     try {
       const endpoint = authMode === 'login' ? '/auth/login' : '/auth/signup'
-      const response = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify(authForm) })
+      const response = await crudApiFetch(endpoint, { method: 'POST', body: JSON.stringify(authForm) })
       const body = await response.json()
       if (!response.ok) {
         setAuthError(body?.detail || 'Authentication failed.')
@@ -277,7 +281,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await apiFetch('/auth/logout', { method: 'POST' })
+      await crudApiFetch('/auth/logout', { method: 'POST' })
     } finally {
       setAuthUser(null)
       setSavedResults([])
@@ -315,7 +319,10 @@ function App() {
     setLoading(true)
     const payload = buildPredictionPayload()
     try {
-      const response = await apiFetch('/predict', { method: 'POST', body: JSON.stringify(payload) })
+      const response = await mlApiFetch('/predict', {
+        method: 'POST',
+        body: JSON.stringify({ clinical_inputs: payload, risk_rules: normalizeRules(riskRules) }),
+      })
       const body = await response.json()
       if (!response.ok) {
         setError(body?.detail || 'Prediction failed.')
@@ -324,7 +331,7 @@ function App() {
       setResult(body)
       setLastPredictionPayload(payload)
     } catch {
-      setError('Unable to connect to backend API. Make sure FastAPI is running.')
+      setError('Unable to connect to ML inference API. Make sure FastAPI is running.')
     } finally {
       setLoading(false)
     }
@@ -342,6 +349,10 @@ function App() {
       setSaveError('Run prediction first.')
       return
     }
+    if (!result) {
+      setSaveError('Prediction output is missing. Run prediction again.')
+      return
+    }
     const firstName = saveIdentity.firstName.trim()
     const lastName = saveIdentity.lastName.trim()
     if (!firstName || !lastName) {
@@ -352,10 +363,18 @@ function App() {
       patient_first_name: firstName,
       patient_last_name: lastName,
       clinical_inputs: lastPredictionPayload,
+      risk_probability: Number(result.risk_probability),
+      risk_percent: Number(result.risk_percent),
+      risk_label: String(result.risk_label ?? ''),
+      uncertainty_std: Number(result.uncertainty_std),
+      uncertainty_percent: Number(result.uncertainty_percent),
+      confidence_interval_95: Array.isArray(result.confidence_interval_95)
+        ? result.confidence_interval_95.map((value) => Number(value))
+        : [],
     }
     setSaveLoading(true)
     try {
-      const response = await apiFetch('/results', { method: 'POST', body: JSON.stringify(payload) })
+      const response = await crudApiFetch('/results', { method: 'POST', body: JSON.stringify(payload) })
       const body = await response.json()
       if (!response.ok) {
         setSaveError(body?.detail || 'Unable to save result.')
@@ -418,7 +437,7 @@ function App() {
     const sorted = [...normalized].sort((a, b) => a.threshold - b.threshold)
     setRiskSettingsSaving(true)
     try {
-      const response = await apiFetch('/risk-settings', { method: 'PUT', body: JSON.stringify({ rules: sorted }) })
+      const response = await crudApiFetch('/risk-settings', { method: 'PUT', body: JSON.stringify({ rules: sorted }) })
       const body = await response.json()
       if (!response.ok) {
         setRiskSettingsError(body?.detail || 'Unable to save risk rules.')

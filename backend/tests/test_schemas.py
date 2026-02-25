@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from backend.app.schemas import RiskClassificationRulesUpsertRequest, SavePredictionRequest
+from backend.app.schemas import PredictionRequest, RiskClassificationRulesUpsertRequest, SavePredictionRequest
 
 
 def test_save_prediction_request_strips_patient_names(prediction_payload):
@@ -33,4 +33,15 @@ def test_risk_rule_upsert_rejects_duplicate_thresholds():
                 {"threshold": 0.3, "label": "Low"},
                 {"threshold": 0.30000000001, "label": "Medium"},
             ]
+        )
+
+
+def test_prediction_request_rejects_duplicate_custom_thresholds(prediction_payload):
+    with pytest.raises(ValidationError, match="Threshold values must be unique"):
+        PredictionRequest(
+            clinical_inputs=prediction_payload,
+            risk_rules=[
+                {"threshold": 0.2, "label": "Low"},
+                {"threshold": 0.20000000001, "label": "Medium"},
+            ],
         )

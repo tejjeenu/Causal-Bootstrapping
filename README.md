@@ -137,3 +137,18 @@ This project provides a **causal stress test** for medical machine learning mode
 - Example angiographic CAD clinical study  
   https://www.sciencedirect.com/science/article/pii/0002914989905249
 
+---
+
+## Web App Backend Split (2026)
+
+The web application now uses two backend services:
+
+- FastAPI (`backend/`): ML inference only
+- Spring Boot (`spring-backend/`): auth + Supabase CRUD only
+
+See:
+
+- [`WEBAPP_SETUP.md`](WEBAPP_SETUP.md)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/ML_API.md`](docs/ML_API.md)
+- [`docs/CRUD_API.md`](docs/CRUD_API.md)
