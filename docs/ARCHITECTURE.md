@@ -20,6 +20,33 @@ flowchart LR
     CRUD -->|Supabase REST API| SP[(Supabase Postgres)]
 ```
 
+## Tier Architecture And Communication
+
+```mermaid
+flowchart TB
+    subgraph T1[Presentation Tier]
+        UI[React Frontend (Vite)]
+    end
+
+    subgraph T2[Service Tier]
+        CRUD[Spring Boot CRUD API]
+        ML[FastAPI ML API]
+    end
+
+    subgraph T3[Data Tier]
+        DB[(Supabase Postgres)]
+    end
+
+    UI -->|Auth + CRUD requests| CRUD
+    CRUD -->|JSON responses| UI
+
+    UI -->|Prediction requests| ML
+    ML -->|Prediction responses| UI
+
+    CRUD -->|Read/Write via Supabase REST| DB
+    DB -->|Row data + status| CRUD
+```
+
 ## Runtime Request Flow
 
 ```mermaid
