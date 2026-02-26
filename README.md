@@ -30,6 +30,33 @@ The intent is to prioritize the model that remains most reliable after this stre
 
 ---
 
+## Causal Diagram
+
+![Causal DAG used for deconfounding and model selection](causaldiagram.png)
+
+---
+
+## Intended Model Selection Strategy
+
+The repo was designed to evaluate the "most accurate and causally robust" model using this workflow:
+
+1. Define causal assumptions with a DAG and generate deconfounded training datasets (for example backdoor and truncated-factorization variants).
+2. Keep a confounded holdout split from the original observational data as a reality-check evaluation set.
+3. Train multiple candidate classifiers on each deconfounded training dataset under the same feature schema.
+4. Evaluate each candidate on the same holdout using discrimination and probability-quality metrics.
+5. Rank candidates using an explicit rule (implemented in `fastapi-backend/train_best_deconfounded_model.py`): maximize `accuracy`, then `roc_auc`, then `pr_auc`, and break ties by minimizing `brier` and `log_loss`.
+6. Retrain the selected winner on the full selected deconfounded dataset.
+7. Train bootstrap replicas for uncertainty estimation and package everything into a single inference artifact for the API.
+
+Interpretation of "causally robust" in this project:
+- A model is treated as more causally robust if it remains strong when trained on deconfounded data and then evaluated on held-out observational data, with stable calibration and discrimination.
+- This is an intended robustness proxy under stated DAG assumptions, not proof of true causal identification.
+
+Current repository snapshot:
+- The saved FastAPI artifact (`fastapi-backend/models/best_deconfounded_model.joblib`) currently records `RandomForestClassifier` trained from `heart_disease_preprocessed_backdoor.csv` with bootstrap uncertainty enabled.
+
+---
+
 ## Method Overview
 
 - Causal DAG Specification
