@@ -24,16 +24,16 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph T1[Presentation Tier]
-        UI[React Frontend (Vite)]
+    subgraph "Presentation Tier"
+        UI["React Frontend (Vite)"]
     end
 
-    subgraph T2[Service Tier]
-        CRUD[Spring Boot CRUD API]
-        ML[FastAPI ML API]
+    subgraph "Service Tier"
+        CRUD["Spring Boot CRUD API"]
+        ML["FastAPI ML API"]
     end
 
-    subgraph T3[Data Tier]
+    subgraph "Data Tier"
         DB[(Supabase Postgres)]
     end
 
