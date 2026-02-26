@@ -13,7 +13,7 @@ This separation allows the ML API to run standalone and be reused by other clien
 
 ```mermaid
 flowchart LR
-    UI[React Frontend]\n(Vite) -->|Predict request| ML[FastAPI ML API]
+    UI["React Frontend<br/>(Vite)"] -->|Predict request| ML[FastAPI ML API]
     UI -->|Auth + CRUD requests| CRUD[Spring Boot CRUD API]
     ML -->|Loads model artifact| ART[(joblib model + normalization JSON)]
     CRUD -->|Supabase Auth API| SA[(Supabase Auth)]
