@@ -1,5 +1,58 @@
 # Causal Risk Predictor Web App Setup
 
+## 0) Run as a Docker multi-container app (deployment style)
+
+From repo root:
+
+### First-time setup
+
+```powershell
+Copy-Item .env.compose.example .env
+# edit .env and set:
+# SUPABASE_URL
+# SUPABASE_ANON_KEY
+```
+
+### Start all services
+
+```powershell
+docker compose up --build -d
+```
+
+Services:
+
+- Frontend: `http://localhost` (or `http://localhost:$FRONTEND_PORT`)
+- FastAPI: `http://localhost:8000` (or `:$FASTAPI_PORT`)
+- Spring Boot: `http://localhost:8080` (or `:$SPRING_PORT`)
+
+Compose stack behavior:
+
+- Frontend container serves the React production build via Nginx.
+- Nginx proxies `/ml-api/*` to FastAPI and `/crud-api/*` to Spring Boot.
+- FastAPI loads:
+  - model artifact: `/app/models/best_deconfounded_model.joblib`
+  - normalization settings: `/app/models/initial_eda_normalization_settings.json`
+
+### Verify stack status
+
+```powershell
+docker compose ps
+Invoke-WebRequest -UseBasicParsing http://localhost/ml-api/health | Select-Object -ExpandProperty Content
+Invoke-WebRequest -UseBasicParsing http://localhost/crud-api/health | Select-Object -ExpandProperty Content
+```
+
+### View logs
+
+```powershell
+docker compose logs -f
+```
+
+### Stop stack
+
+```powershell
+docker compose down
+```
+
 ## 1) Start FastAPI ML inference service
 
 ```powershell
