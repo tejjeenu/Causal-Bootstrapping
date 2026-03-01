@@ -179,6 +179,9 @@ The web application now uses two backend services:
 - FastAPI (`fastapi-backend/`): ML inference only
 - Spring Boot (`spring-backend/`): auth + Supabase CRUD only
 
+Live web application:
+- https://cad-causal-risk-predictor.web.app/
+
 Clinical intent in the web app:
 - Surface predictions from the most causally robust candidate model, rather than the highest raw associational score.
 - Let clinical domain knowledge be represented explicitly (for example via configurable risk settings/thresholds and labels).
