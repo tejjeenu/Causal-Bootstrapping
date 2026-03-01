@@ -15,6 +15,9 @@ Copy-Item .env.compose.example .env
 
 ### Start all services
 
+Before running Compose, make sure Docker Desktop is open and shows the engine as running.  
+On Windows, if you get a `dockerDesktopLinuxEngine` pipe/connect error, start Docker Desktop and wait for it to finish initializing, then retry.
+
 ```powershell
 docker compose up --build -d
 ```
