@@ -4,3 +4,6 @@
 
 # Keep committed templates
 !/.env.compose.example
+
+# Firebase local state
+.firebase/

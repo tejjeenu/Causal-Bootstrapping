@@ -4,14 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "prepare:firebase-config": "node scripts/prepare-firebase-config.mjs",
+    "dev": "npm run prepare:firebase-config && vite",
+    "build": "npm run prepare:firebase-config && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "preview": "npm run prepare:firebase-config && vite preview",
+    "test": "npm run prepare:firebase-config && vitest run",
+    "test:watch": "npm run prepare:firebase-config && vitest"
   },
   "dependencies": {
+    "firebase": "^12.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

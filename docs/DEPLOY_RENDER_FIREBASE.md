@@ -77,6 +77,21 @@ VITE_ML_API_BASE_URL=https://<your-fastapi-service>.onrender.com
 VITE_CRUD_API_BASE_URL=https://<your-spring-service>.onrender.com
 ```
 
+Note:
+
+- local app usage on `localhost` still routes to local `/ml-api` and `/crud-api` paths by design
+- these production URLs apply to deployed frontend hosts (for example Firebase Hosting)
+
+Optional (Firebase analytics in frontend):
+
+```powershell
+cd frontend
+Copy-Item src\firebase\firebase.config.local.example.js src\firebase\firebase.config.local.js
+```
+
+Then edit `src/firebase/firebase.config.local.js` with your Firebase config.
+This file is gitignored. Frontend scripts auto-generate `src/firebase/firebase.config.generated.js` before build/test/dev.
+
 ## 5) Deploy Frontend to Firebase Hosting
 
 From repo root:
@@ -84,40 +99,17 @@ From repo root:
 ```powershell
 npm install -g firebase-tools
 firebase login
+firebase use cad-causal-risk-predictor
 ```
 
-Initialize Hosting (one-time):
+This repo already includes:
+
+- `firebase.json` (Hosting public dir + SPA rewrite + predeploy build)
+- `.firebaserc` (default project: `cad-causal-risk-predictor`)
+
+Deploy:
 
 ```powershell
-firebase init hosting
-```
-
-Choose:
-
-- Use an existing Firebase project (or create one)
-- Public directory: `frontend/dist`
-- Single-page app rewrite to `index.html`: `Yes`
-- GitHub Action deploy setup: optional
-
-Ensure `firebase.json` looks like:
-
-```json
-{
-  "hosting": {
-    "public": "frontend/dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
-  }
-}
-```
-
-Build + deploy:
-
-```powershell
-cd frontend
-npm ci
-npm run build
-cd ..
 firebase deploy --only hosting
 ```
 

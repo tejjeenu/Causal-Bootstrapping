@@ -2,8 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
 const LEGACY_API_BASE = import.meta.env.VITE_API_BASE_URL
-const ML_API_BASE = import.meta.env.VITE_ML_API_BASE_URL ?? LEGACY_API_BASE ?? '/ml-api'
-const CRUD_API_BASE = import.meta.env.VITE_CRUD_API_BASE_URL ?? LEGACY_API_BASE ?? '/crud-api'
+const LOCAL_ML_API_BASE = '/ml-api'
+const LOCAL_CRUD_API_BASE = '/crud-api'
+const ML_API_BASE_FROM_ENV = import.meta.env.VITE_ML_API_BASE_URL ?? LEGACY_API_BASE ?? LOCAL_ML_API_BASE
+const CRUD_API_BASE_FROM_ENV = import.meta.env.VITE_CRUD_API_BASE_URL ?? LEGACY_API_BASE ?? LOCAL_CRUD_API_BASE
+
+const isLocalHostname = () => {
+  if (typeof window === 'undefined') return false
+  return ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
+}
+
+const ML_API_BASE = isLocalHostname() ? LOCAL_ML_API_BASE : ML_API_BASE_FROM_ENV
+const CRUD_API_BASE = isLocalHostname() ? LOCAL_CRUD_API_BASE : CRUD_API_BASE_FROM_ENV
 
 const NUMERIC_FIELDS = [
   { key: 'age', label: 'Age', min: 1, max: 120, step: 1 },
