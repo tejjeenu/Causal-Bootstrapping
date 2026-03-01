@@ -20,6 +20,10 @@ Expected files:
 
 ## 3. Configure environment (`.env`)
 
+```powershell
+Copy-Item .env.example .env
+```
+
 - `CORS_ORIGINS` (optional, default localhost frontend origins)
 - `MODEL_ARTIFACT_PATH` (optional)
 - `NORMALIZATION_SETTINGS_PATH` (optional)

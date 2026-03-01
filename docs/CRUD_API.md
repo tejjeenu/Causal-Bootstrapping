@@ -12,7 +12,7 @@ This service owns:
 
 ```powershell
 cd spring-backend
-# one-time setup (optional if values already exist in ../fastapi-backend/.env)
+# one-time setup
 Copy-Item .env.example .env
 # edit .env with your Supabase values
 .\mvnw.cmd spring-boot:run
@@ -21,8 +21,6 @@ Copy-Item .env.example .env
 The service auto-loads:
 
 - `spring-backend/.env`
-- `../.env`
-- `../fastapi-backend/.env`
 
 Required configuration values:
 

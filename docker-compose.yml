@@ -18,17 +18,12 @@ services:
       context: ./spring-backend
       dockerfile: Dockerfile
     container_name: causal-spring-backend
+    env_file:
+      - ./spring-backend/.env
     ports:
       - "${SPRING_PORT:-8080}:8080"
     environment:
       CRUD_API_PORT: 8080
-      SUPABASE_URL: "${SUPABASE_URL:?SUPABASE_URL is required}"
-      SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required}"
-      SUPABASE_RESULTS_TABLE: "${SUPABASE_RESULTS_TABLE:-prediction_results}"
-      SUPABASE_RISK_SETTINGS_TABLE: "${SUPABASE_RISK_SETTINGS_TABLE:-risk_classification_settings}"
-      AUTH_COOKIE_NAME: "${AUTH_COOKIE_NAME:-cb_auth_token}"
-      AUTH_COOKIE_SECURE: "${AUTH_COOKIE_SECURE:-false}"
-      AUTH_COOKIE_SAMESITE: "${AUTH_COOKIE_SAMESITE:-Lax}"
       CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost,http://127.0.0.1,http://localhost:5173,http://127.0.0.1:5173}"
     restart: unless-stopped
 

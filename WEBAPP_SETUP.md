@@ -8,7 +8,9 @@ From repo root:
 
 ```powershell
 Copy-Item .env.compose.example .env
-# edit .env and set:
+# one-time Spring setup for Supabase credentials:
+Copy-Item spring-backend/.env.example spring-backend/.env
+# edit spring-backend/.env and set:
 # SUPABASE_URL
 # SUPABASE_ANON_KEY
 ```
@@ -32,6 +34,7 @@ Compose stack behavior:
 
 - Frontend container serves the React production build via Nginx.
 - Nginx proxies `/ml-api/*` to FastAPI and `/crud-api/*` to Spring Boot.
+- Spring container reads Supabase/auth settings from `spring-backend/.env` (not `fastapi-backend/.env`).
 - FastAPI loads:
   - model artifact: `/app/models/best_deconfounded_model.joblib`
   - normalization settings: `/app/models/initial_eda_normalization_settings.json`
@@ -83,7 +86,7 @@ In another terminal:
 
 ```powershell
 cd spring-backend
-# one-time setup (optional if values already exist in ../fastapi-backend/.env)
+# one-time setup
 Copy-Item .env.example .env
 # edit .env with your Supabase values
 .\mvnw.cmd spring-boot:run

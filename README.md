@@ -190,3 +190,4 @@ See:
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - [`docs/ML_API.md`](docs/ML_API.md)
 - [`docs/CRUD_API.md`](docs/CRUD_API.md)
+- [`docs/DEPLOY_RENDER_FIREBASE.md`](docs/DEPLOY_RENDER_FIREBASE.md)

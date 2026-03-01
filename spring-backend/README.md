@@ -6,7 +6,7 @@ This service handles app auth/session and CRUD operations against Supabase Postg
 
 ```powershell
 cd spring-backend
-# one-time setup (optional if you already keep values in ../fastapi-backend/.env)
+# one-time setup
 Copy-Item .env.example .env
 # then edit .env with your real Supabase values
 .\mvnw.cmd spring-boot:run
@@ -17,8 +17,8 @@ Default port: `8080`
 Spring Boot auto-loads:
 
 - `spring-backend/.env`
-- `../.env`
-- `../fastapi-backend/.env`
+
+Docker Compose also injects Spring environment variables from `spring-backend/.env`.
 
 ## Required configuration values
 
