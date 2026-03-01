@@ -26,7 +26,7 @@ Create a new Render **Web Service**:
 Set environment variables:
 
 ```text
-MODEL_ARTIFACT_PATH=/app/models/best_deconfounded_model.joblib
+MODEL_ARTIFACT_PATH=/app/models/neural_network_model.joblib
 NORMALIZATION_SETTINGS_PATH=/app/models/initial_eda_normalization_settings.json
 INFERENCE_CACHE_SIZE=512
 CORS_ORIGINS=https://<your-firebase-site>.web.app,https://<your-firebase-site>.firebaseapp.com

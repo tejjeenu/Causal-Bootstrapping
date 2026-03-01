@@ -36,7 +36,7 @@ Compose stack behavior:
 - Nginx proxies `/ml-api/*` to FastAPI and `/crud-api/*` to Spring Boot.
 - Spring container reads Supabase/auth settings from `spring-backend/.env` (not `fastapi-backend/.env`).
 - FastAPI loads:
-  - model artifact: `/app/models/best_deconfounded_model.joblib`
+  - model artifact: `/app/models/neural_network_model.joblib`
   - normalization settings: `/app/models/initial_eda_normalization_settings.json`
 
 ### Verify stack status
@@ -66,6 +66,8 @@ cd fastapi-backend
 python -m venv .venv
 .venv\Scripts\activate
 python -m pip install -r requirements.txt
+# one-time setup
+Copy-Item .env.example .env
 # optional: tune inference cache size per process (default 512)
 # $env:INFERENCE_CACHE_SIZE=1024
 python -m uvicorn app.main:app --reload --port 8000

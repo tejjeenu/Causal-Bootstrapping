@@ -130,6 +130,14 @@ def test_load_model_bundle_raises_when_artifact_missing(monkeypatch, tmp_path):
         load_model_bundle()
 
 
+def test_load_model_bundle_requires_explicit_artifact_path(monkeypatch):
+    monkeypatch.delenv("MODEL_ARTIFACT_PATH", raising=False)
+    load_model_bundle.cache_clear()
+
+    with pytest.raises(ValueError):
+        load_model_bundle()
+
+
 def test_load_model_bundle_supports_dict_artifact(monkeypatch, tmp_path):
     path = tmp_path / "artifact.joblib"
     path.write_text("placeholder", encoding="utf-8")

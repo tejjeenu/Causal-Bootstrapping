@@ -15,8 +15,8 @@ python -m pip install -r requirements.txt
 
 Expected files:
 
-- `neural_network_model.joblib` (or `MODEL_ARTIFACT_PATH` override)
-- `fastapi-backend/models/initial_eda_normalization_settings.json` (or `NORMALIZATION_SETTINGS_PATH` override)
+- `fastapi-backend/models/neural_network_model.joblib`
+- `fastapi-backend/models/initial_eda_normalization_settings.json`
 
 ## 3. Configure environment (`.env`)
 
@@ -25,8 +25,8 @@ Copy-Item .env.example .env
 ```
 
 - `CORS_ORIGINS` (optional, default localhost frontend origins)
-- `MODEL_ARTIFACT_PATH` (optional)
-- `NORMALIZATION_SETTINGS_PATH` (optional)
+- `MODEL_ARTIFACT_PATH` (required)
+- `NORMALIZATION_SETTINGS_PATH` (required)
 - `INFERENCE_CACHE_SIZE` (optional, default `512`; set `0` to disable caching)
 
 ## 4. Run API

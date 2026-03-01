@@ -9,12 +9,15 @@ from typing import Any, List
 import joblib
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 
 from .feature_encoding import NUMERIC_FEATURES
 
 JITTER_STD = 0.05
 JITTER_SAMPLES = 40
 JITTER_SEED = 42
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(_BACKEND_ROOT / ".env")
 
 
 @dataclass
@@ -28,10 +31,10 @@ class ModelBundle:
 
 
 def _resolve_artifact_path() -> Path:
-    repo_root = Path(__file__).resolve().parents[2]
-    default_path = repo_root / "neural_network_model.joblib"
     configured_path = os.getenv("MODEL_ARTIFACT_PATH")
-    return Path(configured_path) if configured_path else default_path
+    if not configured_path:
+        raise ValueError("MODEL_ARTIFACT_PATH is required and must point to a single model artifact file.")
+    return Path(configured_path)
 
 
 def _predict_proba(model: Any, features: pd.DataFrame) -> float:
@@ -53,8 +56,7 @@ def load_model_bundle() -> ModelBundle:
     artifact_path = _resolve_artifact_path()
     if not artifact_path.exists():
         raise FileNotFoundError(
-            f"Model artifact not found at '{artifact_path}'. "
-            "Place `neural_network_model.joblib` in the repo root or set MODEL_ARTIFACT_PATH."
+            f"Model artifact not found at '{artifact_path}'. Set MODEL_ARTIFACT_PATH to a valid model file."
         )
 
     artifact = joblib.load(artifact_path)

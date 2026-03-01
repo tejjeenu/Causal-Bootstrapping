@@ -98,8 +98,8 @@ sequenceDiagram
 ### FastAPI (ML API)
 
 - `CORS_ORIGINS`
-- `MODEL_ARTIFACT_PATH` (optional override)
-- `NORMALIZATION_SETTINGS_PATH` (optional override)
+- `MODEL_ARTIFACT_PATH` (required)
+- `NORMALIZATION_SETTINGS_PATH` (required)
 
 ### Spring Boot (CRUD API)
 
