@@ -2,6 +2,9 @@
 
 This project was both an investigation and a build opportunity: an investigation into whether CAD prediction performance reflects stable causal signal versus confounded associations, and an opportunity to create a clinician-facing tool that is more causally robust in practice.
 
+Live web application:
+- https://cad-causal-risk-predictor.web.app/
+
 ---
 
 ## Problem
