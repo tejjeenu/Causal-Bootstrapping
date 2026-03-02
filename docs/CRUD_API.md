@@ -48,6 +48,7 @@ Optional:
 - `GET /results`
 - `POST /results`
 - `PATCH /results/{resultId}`
+- `DELETE /results/{resultId}`
 
 `PUT /risk-settings` rule constraints:
 

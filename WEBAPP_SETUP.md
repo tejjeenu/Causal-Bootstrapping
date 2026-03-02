@@ -135,17 +135,3 @@ Run the table/RLS SQL from [`spring-backend/README.md`](spring-backend/README.md
 For standalone/third-party ML API integrations (Python, Node.js, batch jobs), see [`docs/ML_API.md`](docs/ML_API.md).
 
 The frontend includes a **Batch Prediction (CSV)** panel with a downloadable CSV template for multi-patient inference.
-
-## Run all 3 layers in separate windows
-
-From repo root:
-
-```powershell
-.\run-all-layers.ps1
-```
-
-This launches three PowerShell windows:
-
-- FastAPI backend (`http://localhost:8000`)
-- Spring backend (`http://localhost:8080`)
-- Frontend (`http://localhost:5173`)

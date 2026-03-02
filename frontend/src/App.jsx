@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const LEGACY_API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -58,6 +58,7 @@ const DEFAULT_RULES = [
 ]
 const ZERO_THRESHOLD_TOLERANCE = 1e-10
 const DEFAULT_SAVE_IDENTITY = { firstName: '', lastName: '' }
+const DEFAULT_CONFIRM_DIALOG = { open: false, type: '', resultId: '', title: '', message: '' }
 const BATCH_TEMPLATE_HEADERS = [
   'patient_first_name',
   'patient_last_name',
@@ -93,6 +94,74 @@ const BATCH_TEMPLATE_EXAMPLE_ROW = [
   'Reversible Defect',
 ]
 
+function CurvedSelect({ id, value, options, onChange }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    const closeOnOutsideClick = (event) => {
+      if (!rootRef.current?.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  return (
+    <div className="curved-select" ref={rootRef}>
+      <button
+        id={id}
+        type="button"
+        className={`curved-select-trigger${open ? ' open' : ''}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${id}-listbox`}
+        onClick={() => setOpen((previous) => !previous)}
+      >
+        <span>{value}</span>
+        <span aria-hidden="true" className="curved-select-chevron">
+          <svg viewBox="0 0 14 8" focusable="false">
+            <path d="M1 1.5L7 6.5L13 1.5" />
+          </svg>
+        </span>
+      </button>
+      {open && (
+        <ul id={`${id}-listbox`} role="listbox" className="curved-select-menu">
+          {options.map((option) => (
+            <li key={option}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={option === value}
+                className={`curved-select-option${option === value ? ' selected' : ''}`}
+                onClick={() => {
+                  onChange(option)
+                  setOpen(false)
+                }}
+              >
+                {option}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function App() {
   const [authChecked, setAuthChecked] = useState(false)
   const [authPanelOpen, setAuthPanelOpen] = useState(false)
@@ -122,6 +191,15 @@ function App() {
   const [riskFiltersTouched, setRiskFiltersTouched] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState('')
+  const [deletingResultId, setDeletingResultId] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleteMessage, setDeleteMessage] = useState('')
+  const [editingResultId, setEditingResultId] = useState('')
+  const [editIdentity, setEditIdentity] = useState(DEFAULT_SAVE_IDENTITY)
+  const [nameUpdateLoadingId, setNameUpdateLoadingId] = useState('')
+  const [nameUpdateError, setNameUpdateError] = useState('')
+  const [nameUpdateMessage, setNameUpdateMessage] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState(DEFAULT_CONFIRM_DIALOG)
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
@@ -302,6 +380,7 @@ function App() {
       setSavedResults([])
       setSelectedRiskLabels([])
       setRiskFiltersTouched(false)
+      setConfirmDialog(DEFAULT_CONFIRM_DIALOG)
       return
     }
     loadRiskRules()
@@ -355,6 +434,15 @@ function App() {
       setSavedResults([])
       setSelectedRiskLabels([])
       setRiskFiltersTouched(false)
+      setDeletingResultId('')
+      setDeleteError('')
+      setDeleteMessage('')
+      setEditingResultId('')
+      setEditIdentity(DEFAULT_SAVE_IDENTITY)
+      setNameUpdateLoadingId('')
+      setNameUpdateError('')
+      setNameUpdateMessage('')
+      setConfirmDialog(DEFAULT_CONFIRM_DIALOG)
       setRiskRules(DEFAULT_RULES)
       setSaveError('')
       setSaveMessage('')
@@ -805,6 +893,61 @@ function App() {
     setSelectedRiskLabels([])
   }
 
+  const closeConfirmDialog = () => {
+    setConfirmDialog(DEFAULT_CONFIRM_DIALOG)
+  }
+
+  const handleDeleteSavedResult = (resultId) => {
+    if (deletingResultId || confirmDialog.open) return
+    const safeResultId = String(resultId ?? '').trim()
+    if (!safeResultId) return
+    if (!authUser) {
+      setDeleteError('Sign in first to delete saved results.')
+      setAuthPanelOpen(true)
+      return
+    }
+
+    setDeleteError('')
+    setDeleteMessage('')
+    setNameUpdateError('')
+    setNameUpdateMessage('')
+    const target = savedResults.find((entry) => entry?.id === safeResultId)
+    const patientName = [target?.patient_first_name, target?.patient_last_name].filter(Boolean).join(' ').trim()
+    setConfirmDialog({
+      open: true,
+      type: 'delete',
+      resultId: safeResultId,
+      title: 'Delete Saved Result?',
+      message: `Delete this saved result${patientName ? ` for ${patientName}` : ''}? This action cannot be undone.`,
+    })
+  }
+
+  const performDeleteSavedResult = async (resultId) => {
+    const safeResultId = String(resultId ?? '').trim()
+    if (!safeResultId) return
+    setDeletingResultId(safeResultId)
+    try {
+      const response = await crudApiFetch(`/results/${encodeURIComponent(safeResultId)}`, { method: 'DELETE' })
+      if (!response.ok) {
+        let body = null
+        try {
+          body = await response.json()
+        } catch {
+          body = null
+        }
+        setDeleteError(body?.detail || 'Unable to delete saved result.')
+        return
+      }
+
+      setSavedResults((previous) => previous.filter((entry) => entry?.id !== safeResultId))
+      setDeleteMessage('Saved result deleted.')
+    } catch {
+      setDeleteError('Unable to delete saved result.')
+    } finally {
+      setDeletingResultId('')
+    }
+  }
+
   const exportFilteredResultsAsCsv = () => {
     if (filteredSavedResults.length === 0) return
 
@@ -873,14 +1016,21 @@ function App() {
     if (batchLoading) return 'Running batch prediction.'
     if (batchSaveLoading) return 'Saving batch prediction results.'
     if (riskSettingsSaving) return 'Saving risk classification rules.'
+    if (deletingResultId) return 'Deleting saved result.'
+    if (nameUpdateLoadingId) return 'Updating saved patient name.'
+    if (confirmDialog.open) return confirmDialog.message
     if (historyLoading) return 'Loading saved results.'
     if (error) return `Prediction error. ${error}`
     if (authError) return `Authentication error. ${authError}`
     if (saveError) return `Save error. ${saveError}`
+    if (deleteError) return `Delete error. ${deleteError}`
+    if (nameUpdateError) return `Update error. ${nameUpdateError}`
     if (batchError) return `Batch prediction error. ${batchError}`
     if (batchSaveError) return `Batch save error. ${batchSaveError}`
     if (riskSettingsError) return `Risk settings error. ${riskSettingsError}`
     if (saveSuccessDialogOpen) return 'Prediction saved successfully. Choose whether to clear the result view.'
+    if (deleteMessage) return deleteMessage
+    if (nameUpdateMessage) return nameUpdateMessage
     if (batchSaveMessage) return batchSaveMessage
     if (saveMessage) return saveMessage
     if (riskSettingsMessage) return riskSettingsMessage
@@ -892,19 +1042,138 @@ function App() {
     batchLoading,
     batchSaveLoading,
     riskSettingsSaving,
+    deletingResultId,
+    nameUpdateLoadingId,
+    confirmDialog,
     historyLoading,
     error,
     authError,
     saveError,
+    deleteError,
+    nameUpdateError,
     batchError,
     batchSaveError,
     riskSettingsError,
     saveSuccessDialogOpen,
+    deleteMessage,
+    nameUpdateMessage,
     batchSaveMessage,
     saveMessage,
     riskSettingsMessage,
     result,
   ])
+
+  const beginEditSavedResultName = (entry) => {
+    if (!entry?.id || deletingResultId || nameUpdateLoadingId || confirmDialog.open) return
+    setDeleteError('')
+    setDeleteMessage('')
+    setNameUpdateError('')
+    setNameUpdateMessage('')
+    setEditingResultId(entry.id)
+    setEditIdentity({
+      firstName: String(entry?.patient_first_name ?? ''),
+      lastName: String(entry?.patient_last_name ?? ''),
+    })
+  }
+
+  const cancelEditSavedResultName = () => {
+    if (nameUpdateLoadingId) return
+    setEditingResultId('')
+    setEditIdentity(DEFAULT_SAVE_IDENTITY)
+    setNameUpdateError('')
+  }
+
+  const handleSaveEditedName = (resultId) => {
+    const safeResultId = String(resultId ?? '').trim()
+    if (!safeResultId || nameUpdateLoadingId || confirmDialog.open) return
+
+    const firstName = editIdentity.firstName.trim()
+    const lastName = editIdentity.lastName.trim()
+    if (!firstName || !lastName) {
+      setNameUpdateError('Patient first and last name are required.')
+      return
+    }
+    if (firstName.length > 80 || lastName.length > 80) {
+      setNameUpdateError('Each name must be 80 characters or fewer.')
+      return
+    }
+
+    setNameUpdateError('')
+    setNameUpdateMessage('')
+    setDeleteError('')
+    setDeleteMessage('')
+    setConfirmDialog({
+      open: true,
+      type: 'edit',
+      resultId: safeResultId,
+      title: 'Save Name Changes?',
+      message: `Update this saved result to ${firstName} ${lastName}? This updates the database record.`,
+    })
+  }
+
+  const performSaveEditedName = async (resultId) => {
+    const safeResultId = String(resultId ?? '').trim()
+    if (!safeResultId) return
+    const firstName = editIdentity.firstName.trim()
+    const lastName = editIdentity.lastName.trim()
+    if (!firstName || !lastName) {
+      setNameUpdateError('Patient first and last name are required.')
+      return
+    }
+
+    setNameUpdateLoadingId(safeResultId)
+    try {
+      const response = await crudApiFetch(`/results/${encodeURIComponent(safeResultId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          patient_first_name: firstName,
+          patient_last_name: lastName,
+        }),
+      })
+      let body = null
+      try {
+        body = await response.json()
+      } catch {
+        body = null
+      }
+      if (!response.ok) {
+        setNameUpdateError(body?.detail || 'Unable to update patient name.')
+        return
+      }
+
+      setSavedResults((previous) =>
+        previous.map((entry) =>
+          entry?.id === safeResultId
+            ? {
+                ...entry,
+                patient_first_name: body?.patient_first_name ?? firstName,
+                patient_last_name: body?.patient_last_name ?? lastName,
+              }
+            : entry,
+        ),
+      )
+      setEditingResultId('')
+      setEditIdentity(DEFAULT_SAVE_IDENTITY)
+      setNameUpdateMessage('Patient name updated.')
+    } catch {
+      setNameUpdateError('Unable to update patient name.')
+    } finally {
+      setNameUpdateLoadingId('')
+    }
+  }
+
+  const handleConfirmDialogAction = () => {
+    const current = confirmDialog
+    closeConfirmDialog()
+    if (!current?.open || !current?.resultId) return
+    if (current.type === 'delete') {
+      void performDeleteSavedResult(current.resultId)
+      return
+    }
+    if (current.type === 'edit') {
+      void performSaveEditedName(current.resultId)
+    }
+  }
 
   return (
     <div className="page-shell">
@@ -1052,17 +1321,12 @@ function App() {
               {CATEGORICAL_FIELDS.map((field) => (
                 <label key={field.key} className="field field-select">
                   <span>{field.label}</span>
-                  <select
+                  <CurvedSelect
                     id={`input-${field.key}`}
                     value={formState[field.key]}
-                    onChange={(event) => setFormState((prev) => ({ ...prev, [field.key]: event.target.value }))}
-                  >
-                    {field.options.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    options={field.options}
+                    onChange={(value) => setFormState((prev) => ({ ...prev, [field.key]: value }))}
+                  />
                 </label>
               ))}
             </div>
@@ -1259,6 +1523,10 @@ function App() {
           </div>
           {historyLoading && <p className="placeholder">Loading...</p>}
           {historyError && <p className="error" role="alert">{historyError}</p>}
+          {deleteError && <p className="error" role="alert">{deleteError}</p>}
+          {deleteMessage && <p className="save-message">{deleteMessage}</p>}
+          {nameUpdateError && <p className="error" role="alert">{nameUpdateError}</p>}
+          {nameUpdateMessage && <p className="save-message">{nameUpdateMessage}</p>}
           {!historyLoading && !historyError && savedResults.length === 0 && <p className="placeholder">No saved results yet.</p>}
           {!historyLoading && savedResults.length > 0 && (
             <>
@@ -1330,19 +1598,50 @@ function App() {
                         <th scope="col">Vessels (CA)</th>
                         <th scope="col">Risk %</th>
                         <th scope="col">Risk Probability</th>
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredSavedResults.map((entry) => {
                         const riskLabel = normalizeRiskLabel(entry?.risk_label)
+                        const rowIsEditing = editingResultId === entry.id
+                        const rowUpdating = nameUpdateLoadingId === entry.id
                         return (
                           <tr key={entry.id}>
                             <td>
                               <span className={`saved-risk-chip ${getRiskToneClass(riskLabel, riskRules)}`}>{riskLabel}</span>
                             </td>
                             <td>{formatSavedDate(entry.created_at)}</td>
-                            <td>{entry?.patient_first_name || '-'}</td>
-                            <td>{entry?.patient_last_name || '-'}</td>
+                            <td>
+                              {rowIsEditing ? (
+                                <input
+                                  type="text"
+                                  maxLength={80}
+                                  value={editIdentity.firstName}
+                                  onChange={(event) => setEditIdentity((prev) => ({ ...prev, firstName: event.target.value }))}
+                                  className="inline-name-input"
+                                  aria-label="Edit patient first name"
+                                  disabled={rowUpdating}
+                                />
+                              ) : (
+                                entry?.patient_first_name || '-'
+                              )}
+                            </td>
+                            <td>
+                              {rowIsEditing ? (
+                                <input
+                                  type="text"
+                                  maxLength={80}
+                                  value={editIdentity.lastName}
+                                  onChange={(event) => setEditIdentity((prev) => ({ ...prev, lastName: event.target.value }))}
+                                  className="inline-name-input"
+                                  aria-label="Edit patient last name"
+                                  disabled={rowUpdating}
+                                />
+                              ) : (
+                                entry?.patient_last_name || '-'
+                              )}
+                            </td>
                             <td>{getClinicalInputValue(entry, 'age')}</td>
                             <td>{getClinicalInputValue(entry, 'sex')}</td>
                             <td>{getClinicalInputValue(entry, 'cp')}</td>
@@ -1353,6 +1652,47 @@ function App() {
                             <td>{getClinicalInputValue(entry, 'ca')}</td>
                             <td>{formatMetric(entry.risk_percent)}%</td>
                             <td>{formatMetric(entry.risk_probability, 4)}</td>
+                            <td className="saved-actions-cell">
+                              {rowIsEditing ? (
+                                <div className="saved-actions-group">
+                                  <button
+                                    type="button"
+                                    className="save-name-button"
+                                    onClick={() => handleSaveEditedName(entry.id)}
+                                    disabled={rowUpdating || Boolean(deletingResultId) || confirmDialog.open}
+                                  >
+                                    {rowUpdating ? 'Saving...' : 'Save'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="cancel-edit-button"
+                                    onClick={cancelEditSavedResultName}
+                                    disabled={rowUpdating || confirmDialog.open}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="saved-actions-group">
+                                  <button
+                                    type="button"
+                                    className="edit-result-button"
+                                    onClick={() => beginEditSavedResultName(entry)}
+                                    disabled={Boolean(deletingResultId) || Boolean(nameUpdateLoadingId) || confirmDialog.open}
+                                  >
+                                    Edit Name
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="delete-result-button"
+                                    onClick={() => handleDeleteSavedResult(entry.id)}
+                                    disabled={Boolean(deletingResultId) || Boolean(nameUpdateLoadingId) || confirmDialog.open}
+                                  >
+                                    {deletingResultId === entry.id ? 'Deleting...' : 'Delete'}
+                                  </button>
+                                </div>
+                              )}
+                            </td>
                           </tr>
                         )
                       })}
@@ -1363,6 +1703,23 @@ function App() {
             </>
           )}
         </section>
+      )}
+
+      {confirmDialog.open && (
+        <div className="action-confirm-backdrop" role="presentation">
+          <section className="action-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+            <h2 id="confirm-dialog-title">{confirmDialog.title}</h2>
+            <p>{confirmDialog.message}</p>
+            <div className="action-confirm-actions">
+              <button type="button" className="cancel-confirm-button" onClick={closeConfirmDialog}>
+                Cancel
+              </button>
+              <button type="button" className="proceed-confirm-button" onClick={handleConfirmDialogAction}>
+                {confirmDialog.type === 'delete' ? 'Delete Result' : 'Save Changes'}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
 
       {saveSuccessDialogOpen && (

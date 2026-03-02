@@ -206,6 +206,19 @@ public class SupabaseCrudService {
         return mapSavedPredictionRecord(data.get(0));
     }
 
+    public void deletePredictionResult(String accessToken, String resultId) {
+        String path = properties.getSupabaseResultsTable()
+            + "?id=eq."
+            + URLEncoder.encode(resultId, StandardCharsets.UTF_8);
+        JsonNode data = supabaseClientService.restRequest("DELETE", path, null, accessToken, "return=representation");
+        if (!data.isArray()) {
+            throw new ApiException(502, "Unexpected response when deleting prediction result.");
+        }
+        if (data.isEmpty()) {
+            throw new ApiException(404, "Prediction result not found.");
+        }
+    }
+
     public List<SavedPredictionRecord> listPredictionResults(String accessToken, Integer limit) {
         int safeLimit = limit == null ? DEFAULT_LIMIT : Math.min(Math.max(limit, 1), 200);
         String select = "id,created_at,patient_first_name,patient_last_name,clinical_inputs,"

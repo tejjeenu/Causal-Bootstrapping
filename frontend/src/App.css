@@ -450,6 +450,8 @@ h1 {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
   gap: 0.9rem;
+  position: relative;
+  z-index: 10;
 }
 
 .panel {
@@ -489,7 +491,7 @@ h1 {
 }
 
 .field input,
-.field select {
+.curved-select-trigger {
   width: 100%;
   border: 1px solid #9fbad0;
   border-radius: 0.95rem;
@@ -499,16 +501,109 @@ h1 {
   padding: 0.6rem 0.72rem;
 }
 
-.field input::placeholder,
-.field select::placeholder {
+.field input::placeholder {
   color: #668399;
 }
 
 .field input:focus,
-.field select:focus {
+.curved-select-trigger:focus {
   outline: none;
   border-color: var(--nhs-blue);
   box-shadow: 0 0 0 3px rgba(0, 94, 184, 0.18);
+}
+
+.curved-select {
+  position: relative;
+}
+
+.curved-select-trigger {
+  border-radius: 1.3rem;
+  background: linear-gradient(120deg, #ffffff, #f2f8ff);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 2px rgba(0, 48, 135, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.curved-select-trigger:hover,
+.curved-select-trigger.open {
+  border-color: #5d93c3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 6px 14px rgba(0, 94, 184, 0.12);
+}
+
+.curved-select-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  color: #1b5f9f;
+  border-radius: 999px;
+  background: #e9f4ff;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.curved-select-trigger.open .curved-select-chevron {
+  transform: rotate(180deg);
+}
+
+.curved-select-chevron svg {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
+.curved-select-chevron path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.curved-select-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.32rem);
+  z-index: 12;
+  border: 1px solid #a9c7df;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 16px 28px rgba(12, 46, 79, 0.16);
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.curved-select-option {
+  width: 100%;
+  border: 0;
+  border-radius: 0.8rem;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  padding: 0.5rem 0.62rem;
+  cursor: pointer;
+}
+
+.curved-select-option:hover,
+.curved-select-option:focus-visible {
+  background: #eff6fe;
+}
+
+.curved-select-option.selected {
+  background: #e4f0fd;
+  color: #0b4f8e;
+  font-weight: 700;
 }
 
 a:focus-visible,
@@ -736,6 +831,74 @@ select:focus-visible {
   font-size: 0.94rem;
 }
 
+.action-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(9, 24, 39, 0.5);
+  z-index: 1250;
+}
+
+.action-confirm-dialog {
+  width: min(450px, 100%);
+  border-radius: 1rem;
+  border: 1px solid #c8d8e7;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  box-shadow: 0 18px 40px rgba(8, 31, 52, 0.24);
+}
+
+.action-confirm-dialog h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--nhs-blue-dark);
+}
+
+.action-confirm-dialog p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.action-confirm-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.cancel-confirm-button,
+.proceed-confirm-button {
+  border-radius: 0.8rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.55rem 0.88rem;
+  cursor: pointer;
+}
+
+.cancel-confirm-button {
+  border: 1px solid #b8cde0;
+  background: #ffffff;
+  color: #1d4f77;
+}
+
+.proceed-confirm-button {
+  border: 1px solid #d98484;
+  background: #fff2f2;
+  color: #8d2626;
+}
+
+.proceed-confirm-button:hover {
+  background: #ffe6e6;
+  border-color: #c36a6a;
+}
+
 .save-success-actions {
   display: flex;
   gap: 0.6rem;
@@ -945,7 +1108,7 @@ select:focus-visible {
 
 .saved-results-table {
   width: 100%;
-  min-width: 1020px;
+  min-width: 1120px;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.84rem;
@@ -970,6 +1133,102 @@ select:focus-visible {
 
 .saved-results-table tbody tr:nth-child(even) {
   background: #f8fbfe;
+}
+
+.saved-actions-cell {
+  text-align: right;
+}
+
+.saved-actions-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.inline-name-input {
+  width: 100%;
+  min-width: 130px;
+  border: 1px solid #a5bfd6;
+  border-radius: 0.72rem;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.83rem;
+  padding: 0.28rem 0.5rem;
+}
+
+.inline-name-input:focus {
+  outline: none;
+  border-color: var(--nhs-blue);
+  box-shadow: 0 0 0 3px rgba(0, 94, 184, 0.14);
+}
+
+.edit-result-button,
+.save-name-button,
+.cancel-edit-button,
+.delete-result-button {
+  padding: 0.28rem 0.68rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.edit-result-button {
+  border: 1px solid #95badb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0e4f86;
+}
+
+.edit-result-button:hover {
+  border-color: #6398c7;
+  background: #f2f8fe;
+}
+
+.save-name-button {
+  border: 1px solid #78b897;
+  border-radius: 999px;
+  background: #edf8f2;
+  color: #0f6f3c;
+}
+
+.save-name-button:hover {
+  border-color: #4e9a74;
+  background: #e0f1e8;
+}
+
+.cancel-edit-button {
+  border: 1px solid #c3d3e2;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #355b7c;
+}
+
+.cancel-edit-button:hover {
+  border-color: #94b2cc;
+  background: #f4f9fd;
+}
+
+.delete-result-button {
+  border: 1px solid #efc2c2;
+  border-radius: 999px;
+  background: #fff4f4;
+  color: #8d2626;
+}
+
+.delete-result-button:hover {
+  border-color: #d97878;
+  background: #ffe9e9;
+  color: #7a1717;
+}
+
+.edit-result-button:disabled,
+.save-name-button:disabled,
+.cancel-edit-button:disabled,
+.delete-result-button:disabled {
+  opacity: 0.66;
+  cursor: not-allowed;
 }
 
 .saved-risk-chip {
@@ -1004,7 +1263,9 @@ select:focus-visible {
 .save-result-button,
 .refresh-history-button,
 .export-history-button,
-.save-success-actions button {
+.save-success-actions button,
+.cancel-confirm-button,
+.proceed-confirm-button {
   min-height: 42px;
 }
 
@@ -1244,6 +1505,10 @@ select:focus-visible {
   }
 
   .save-success-actions button {
+    width: 100%;
+  }
+
+  .action-confirm-actions button {
     width: 100%;
   }
 }

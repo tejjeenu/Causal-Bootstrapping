@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -71,5 +72,14 @@ public class ResultsController {
         authSessionGuard.requireAuthenticatedUser(request);
         String accessToken = authSessionGuard.requireAccessToken(request);
         return supabaseCrudService.updatePredictionResult(accessToken, resultId, payload);
+    }
+
+    @DeleteMapping("/{resultId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteResult(@PathVariable String resultId, HttpServletRequest request) {
+        originGuard.enforceTrustedOrigin(request);
+        authSessionGuard.requireAuthenticatedUser(request);
+        String accessToken = authSessionGuard.requireAccessToken(request);
+        supabaseCrudService.deletePredictionResult(accessToken, resultId);
     }
 }
