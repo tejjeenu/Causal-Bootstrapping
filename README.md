@@ -39,24 +39,33 @@ The intent is to prioritize the model that remains most reliable after this stre
 
 ---
 
-## Intended Model Selection Strategy
+## Intended Model Comparison Strategy
 
-The repo was designed to evaluate the "most accurate and causally robust" model using this workflow:
+The repo is designed to compare model behavior under different causal/data-shift conditions using this workflow:
 
 1. Define causal assumptions with a DAG and generate deconfounded training datasets (for example backdoor and truncated-factorization variants).
 2. Keep a confounded holdout split from the original observational data as a reality-check evaluation set.
 3. Train multiple candidate classifiers on each deconfounded training dataset under the same feature schema.
-4. Evaluate each candidate on the same holdout using discrimination and probability-quality metrics.
-5. Rank candidates using an explicit rule: maximize `accuracy`, then `roc_auc`, then `pr_auc`, and break ties by minimizing `brier` and `log_loss`.
-6. Retrain the selected winner on the full selected deconfounded dataset.
-7. Train bootstrap replicas for uncertainty estimation and package everything into a single inference artifact for the API.
+4. Evaluate each candidate under all four train/test pairings:
+   - Confounded -> Confounded
+   - Confounded -> Deconfounded
+   - Deconfounded -> Confounded
+   - Deconfounded -> Deconfounded
+5. Report prediction performance as mean and standard deviation for each metric (`accuracy`, `roc_auc`, `pr_auc`, `brier`, `log_loss`) within each pairing.
+6. Choose models by evaluation context rather than a single global ranking:
+   - In-distribution performance: use Confounded -> Confounded and Deconfounded -> Deconfounded.
+   - Causal-mechanism shift performance: use Confounded -> Deconfounded and Deconfounded -> Confounded.
+   - Deconfounded-trained models should be relatively insensitive to confounding signals.
+   - Confounded-trained models should show sensitivity when confounding is removed.
+7. Retrain/deploy only after selecting the context-appropriate model.
+8. Train bootstrap replicas for uncertainty estimation and package everything into a single inference artifact for the API.
 
 Interpretation of "causally robust" in this project:
-- A model is treated as more causally robust if it remains strong when trained on deconfounded data and then evaluated on held-out observational data, with stable calibration and discrimination.
+- A model is treated as more causally robust if deconfounded-trained performance remains stable across Deconfounded -> Deconfounded and Deconfounded -> Confounded, while maintaining reasonable discrimination and calibration.
 - This is an intended robustness proxy under stated DAG assumptions, not proof of true causal identification.
 
 Current repository snapshot:
-- The FastAPI service is configured to use a single neural-network artifact path via `MODEL_ARTIFACT_PATH` (no fallback model path).
+- The FastAPI service is configured to use a single XGBoost backdoor-tuned artifact path via `MODEL_ARTIFACT_PATH` (no fallback model path).
 
 ---
 
@@ -186,7 +195,7 @@ Live web application:
 - https://cad-causal-risk-predictor.web.app/
 
 Clinical intent in the web app:
-- Surface predictions from the most causally robust candidate model, rather than the highest raw associational score.
+- Surface predictions from the model chosen for the intended deployment context, with preference for causally robust behavior over the highest raw associational score.
 - Let clinical domain knowledge be represented explicitly (for example via configurable risk settings/thresholds and labels).
 - Improve reliability of patient-level risk estimates by combining data-driven learning with domain-informed rules.
 

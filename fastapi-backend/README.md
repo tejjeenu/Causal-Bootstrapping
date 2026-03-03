@@ -15,7 +15,7 @@ python -m pip install -r requirements.txt
 
 Expected files:
 
-- `fastapi-backend/models/neural_network_model.joblib`
+- `fastapi-backend/models/xgboost_backdoor_best_artifact.joblib`
 - `fastapi-backend/models/initial_eda_normalization_settings.json`
 
 ## 3. Configure environment (`.env`)

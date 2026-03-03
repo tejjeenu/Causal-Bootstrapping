@@ -20,14 +20,8 @@ def clear_module_caches():
 @pytest.fixture
 def test_settings() -> Settings:
     return Settings(
-        supabase_url="https://example.supabase.co",
-        supabase_anon_key="anon-key",
-        supabase_results_table="prediction_results",
-        supabase_risk_settings_table="risk_classification_settings",
-        auth_cookie_name="cb_auth_token",
-        auth_cookie_secure=False,
-        auth_cookie_samesite="lax",
         cors_origins=("http://localhost:5173",),
+        inference_cache_size=512,
     )
 
 
@@ -47,14 +41,5 @@ def prediction_payload() -> dict:
         "exang": "Yes Ex Angina",
         "slope": "Flat",
         "thal": "Reversible Defect",
-    }
-
-
-@pytest.fixture
-def save_payload(prediction_payload: dict) -> dict:
-    return {
-        "patient_first_name": "Ada",
-        "patient_last_name": "Lovelace",
-        "clinical_inputs": prediction_payload,
     }
 

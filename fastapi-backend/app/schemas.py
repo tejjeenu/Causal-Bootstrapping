@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import List
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class APIModel(BaseModel):
@@ -163,78 +163,3 @@ class ModelInfoResponse(APIModel):
     selection_metrics: dict
     bootstrap_count: int
     feature_count: int
-
-
-class AuthCredentials(APIModel):
-    email: str = Field(..., min_length=5, max_length=254)
-    password: str = Field(..., min_length=6, max_length=128)
-
-
-class AuthUser(APIModel):
-    id: str
-    email: str | None = None
-
-
-class AuthSessionResponse(APIModel):
-    authenticated: bool
-    user: AuthUser | None = None
-    email_confirmation_required: bool = False
-
-
-class MessageResponse(APIModel):
-    detail: str
-
-
-class RiskClassificationRulesUpsertRequest(APIModel):
-    rules: List[RiskRule] = Field(..., min_length=2, max_length=20)
-
-    @model_validator(mode="after")
-    def validate_rule_set(self) -> "RiskClassificationRulesUpsertRequest":
-        seen: set[float] = set()
-        has_zero_threshold = False
-        for rule in self.rules:
-            key = round(rule.threshold, 10)
-            if key in seen:
-                raise ValueError("Threshold values must be unique.")
-            seen.add(key)
-            if abs(rule.threshold) <= 1e-10:
-                has_zero_threshold = True
-        if not has_zero_threshold:
-            raise ValueError("One threshold must be 0.")
-        return self
-
-
-class RiskClassificationSettingsResponse(APIModel):
-    rules: List[RiskRule]
-
-
-class SavePredictionRequest(APIModel):
-    patient_first_name: str = Field(..., min_length=1, max_length=80)
-    patient_last_name: str = Field(..., min_length=1, max_length=80)
-    clinical_inputs: PredictionInput
-
-    @field_validator("patient_first_name", "patient_last_name")
-    @classmethod
-    def normalize_name(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("Name cannot be empty.")
-        return normalized
-
-
-class SavedPredictionRecord(APIModel):
-    id: str
-    created_at: str
-    patient_first_name: str
-    patient_last_name: str
-    clinical_inputs: dict
-    risk_probability: float
-    risk_percent: float
-    risk_label: str
-    uncertainty_std: float
-    uncertainty_percent: float
-    confidence_interval_95: List[float]
-
-
-class SavedPredictionListResponse(APIModel):
-    results: List[SavedPredictionRecord]

@@ -71,8 +71,6 @@ async def add_security_headers(request, call_next):
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-    if settings.auth_cookie_secure:
-        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     return response
 
 
@@ -95,6 +93,12 @@ def _classify_risk(probability: float, risk_rules: list[RiskRule]) -> str:
     return sorted_rules[0].label
 
 
+def _align_features_for_bundle(bundle: ModelBundle, features):
+    if not bundle.feature_columns:
+        return features
+    return features.reindex(columns=bundle.feature_columns, fill_value=0.0)
+
+
 def _predict_uncached(payload: PredictionInput, risk_rules: list[RiskRule]) -> PredictionResponse:
     bundle = _get_bundle()
     try:
@@ -104,6 +108,7 @@ def _predict_uncached(payload: PredictionInput, risk_rules: list[RiskRule]) -> P
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    features = _align_features_for_bundle(bundle, features)
     risk_probability, uncertainty_std = predict_with_uncertainty(bundle, features)
     ci_low = max(0.0, risk_probability - 1.96 * uncertainty_std)
     ci_high = min(1.0, risk_probability + 1.96 * uncertainty_std)
