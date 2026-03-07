@@ -36,7 +36,7 @@ Compose stack behavior:
 - Nginx proxies `/ml-api/*` to FastAPI and `/crud-api/*` to Spring Boot.
 - Spring container reads Supabase/auth settings from `spring-backend/.env` (not `fastapi-backend/.env`).
 - FastAPI loads:
-  - model artifact: `/app/models/xgboost_backdoor_best_artifact.joblib`
+  - model artifact: `models/xgboost_backdoor_best_artifact.joblib`
   - normalization settings: `/app/models/initial_eda_normalization_settings.json`
 
 ### Verify stack status
