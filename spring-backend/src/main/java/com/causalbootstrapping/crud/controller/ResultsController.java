@@ -4,6 +4,7 @@ import com.causalbootstrapping.crud.dto.PredictionResultCreateRequest;
 import com.causalbootstrapping.crud.dto.PredictionResultUpdateRequest;
 import com.causalbootstrapping.crud.dto.SavedPredictionListResponse;
 import com.causalbootstrapping.crud.dto.SavedPredictionRecord;
+import com.causalbootstrapping.crud.dto.AuthUser;
 import com.causalbootstrapping.crud.service.AuthSessionGuard;
 import com.causalbootstrapping.crud.service.OriginGuard;
 import com.causalbootstrapping.crud.service.SupabaseCrudService;
@@ -44,9 +45,13 @@ public class ResultsController {
         HttpServletRequest request,
         @RequestParam(name = "limit", required = false) Integer limit
     ) {
-        authSessionGuard.requireAuthenticatedUser(request);
+        AuthUser currentUser = authSessionGuard.requireAuthenticatedUser(request);
         String accessToken = authSessionGuard.requireAccessToken(request);
-        List<SavedPredictionRecord> results = supabaseCrudService.listPredictionResults(accessToken, limit);
+        List<SavedPredictionRecord> results = supabaseCrudService.listPredictionResults(
+            accessToken,
+            currentUser.id(),
+            limit
+        );
         return new SavedPredictionListResponse(results);
     }
 
@@ -69,17 +74,17 @@ public class ResultsController {
         HttpServletRequest request
     ) {
         originGuard.enforceTrustedOrigin(request);
-        authSessionGuard.requireAuthenticatedUser(request);
+        AuthUser currentUser = authSessionGuard.requireAuthenticatedUser(request);
         String accessToken = authSessionGuard.requireAccessToken(request);
-        return supabaseCrudService.updatePredictionResult(accessToken, resultId, payload);
+        return supabaseCrudService.updatePredictionResult(accessToken, currentUser.id(), resultId, payload);
     }
 
     @DeleteMapping("/{resultId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteResult(@PathVariable String resultId, HttpServletRequest request) {
         originGuard.enforceTrustedOrigin(request);
-        authSessionGuard.requireAuthenticatedUser(request);
+        AuthUser currentUser = authSessionGuard.requireAuthenticatedUser(request);
         String accessToken = authSessionGuard.requireAccessToken(request);
-        supabaseCrudService.deletePredictionResult(accessToken, resultId);
+        supabaseCrudService.deletePredictionResult(accessToken, currentUser.id(), resultId);
     }
 }

@@ -174,6 +174,7 @@ public class SupabaseCrudService {
 
     public SavedPredictionRecord updatePredictionResult(
         String accessToken,
+        String userId,
         String resultId,
         PredictionResultUpdateRequest request
     ) {
@@ -196,9 +197,11 @@ public class SupabaseCrudService {
             throw new ApiException(400, "No update fields were provided.");
         }
 
+        String encodedUserId = URLEncoder.encode(userId, StandardCharsets.UTF_8);
         String path = properties.getSupabaseResultsTable()
             + "?id=eq."
-            + URLEncoder.encode(resultId, StandardCharsets.UTF_8);
+            + URLEncoder.encode(resultId, StandardCharsets.UTF_8)
+            + "&user_id=eq." + encodedUserId;
         JsonNode data = supabaseClientService.restRequest("PATCH", path, payload, accessToken, "return=representation");
         if (!data.isArray() || data.isEmpty()) {
             throw new ApiException(404, "Prediction result not found.");
@@ -206,10 +209,12 @@ public class SupabaseCrudService {
         return mapSavedPredictionRecord(data.get(0));
     }
 
-    public void deletePredictionResult(String accessToken, String resultId) {
+    public void deletePredictionResult(String accessToken, String userId, String resultId) {
+        String encodedUserId = URLEncoder.encode(userId, StandardCharsets.UTF_8);
         String path = properties.getSupabaseResultsTable()
             + "?id=eq."
-            + URLEncoder.encode(resultId, StandardCharsets.UTF_8);
+            + URLEncoder.encode(resultId, StandardCharsets.UTF_8)
+            + "&user_id=eq." + encodedUserId;
         JsonNode data = supabaseClientService.restRequest("DELETE", path, null, accessToken, "return=representation");
         if (!data.isArray()) {
             throw new ApiException(502, "Unexpected response when deleting prediction result.");
@@ -219,12 +224,14 @@ public class SupabaseCrudService {
         }
     }
 
-    public List<SavedPredictionRecord> listPredictionResults(String accessToken, Integer limit) {
+    public List<SavedPredictionRecord> listPredictionResults(String accessToken, String userId, Integer limit) {
         int safeLimit = limit == null ? DEFAULT_LIMIT : Math.min(Math.max(limit, 1), 200);
         String select = "id,created_at,patient_first_name,patient_last_name,clinical_inputs,"
             + "risk_probability,risk_percent,risk_label,uncertainty_std,uncertainty_percent,confidence_interval_95";
+        String encodedUserId = URLEncoder.encode(userId, StandardCharsets.UTF_8);
         String path = properties.getSupabaseResultsTable()
             + "?select=" + select
+            + "&user_id=eq." + encodedUserId
             + "&order=created_at.desc&limit=" + safeLimit;
 
         JsonNode data = supabaseClientService.restRequest("GET", path, null, accessToken, null);
