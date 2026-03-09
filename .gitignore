@@ -7,3 +7,6 @@
 
 # Firebase local state
 .firebase/
+
+# Local report draft
+/causal_report.tex
