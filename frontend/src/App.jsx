@@ -220,6 +220,7 @@ function App() {
   const [batchSaveLoading, setBatchSaveLoading] = useState(false)
   const [batchSaveError, setBatchSaveError] = useState('')
   const [batchSaveMessage, setBatchSaveMessage] = useState('')
+  const [batchFileInputKey, setBatchFileInputKey] = useState(0)
 
   const confidenceRange = useMemo(() => {
     if (!result?.confidence_interval_95) return null
@@ -437,10 +438,20 @@ function App() {
     try {
       await crudApiFetch('/auth/logout', { method: 'POST' })
     } finally {
+      setAuthPanelOpen(false)
+      setAuthMode('login')
+      setAuthForm(DEFAULT_AUTH_FORM)
       setAuthUser(null)
+      setFormState(DEFAULT_FORM)
+      setResult(null)
+      setLastPredictionPayload(null)
+      setLoading(false)
+      setError('')
       setSavedResults([])
       setSelectedRiskLabels([])
       setRiskFiltersTouched(false)
+      setHistoryLoading(false)
+      setHistoryError('')
       setDeletingResultId('')
       setDeleteError('')
       setDeleteMessage('')
@@ -451,12 +462,24 @@ function App() {
       setNameUpdateMessage('')
       setConfirmDialog(DEFAULT_CONFIRM_DIALOG)
       setRiskRules(DEFAULT_RULES)
+      setRiskSettingsLoading(false)
+      setRiskSettingsSaving(false)
+      setRiskSettingsError('')
+      setRiskSettingsMessage('')
+      setSaveLoading(false)
       setSaveError('')
       setSaveMessage('')
       setSaveSuccessDialogOpen(false)
       setSaveIdentity(DEFAULT_SAVE_IDENTITY)
+      setBatchFile(null)
+      setBatchLoading(false)
+      setBatchError('')
+      setBatchMessage('')
+      setBatchResults([])
+      setBatchSaveLoading(false)
       setBatchSaveError('')
       setBatchSaveMessage('')
+      setBatchFileInputKey((previous) => previous + 1)
     }
   }
 
@@ -1429,6 +1452,7 @@ function App() {
           <label className="field">
             <span>Patient CSV file</span>
             <input
+              key={batchFileInputKey}
               type="file"
               accept=".csv,text/csv"
               aria-invalid={Boolean(batchError && batchError.toLowerCase().includes('csv'))}

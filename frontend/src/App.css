@@ -987,7 +987,7 @@ select:focus-visible {
 
 .batch-upload-controls {
   display: flex;
-  align-items: end;
+  align-items: flex-start;
   gap: 0.7rem;
   flex-wrap: wrap;
   margin-bottom: 0.45rem;
@@ -995,6 +995,11 @@ select:focus-visible {
 
 .batch-upload-controls .field {
   min-width: min(520px, 100%);
+}
+
+.batch-upload-controls .save-result-button {
+  align-self: flex-start;
+  margin-top: 1.42rem;
 }
 
 .batch-upload-controls input[type='file'] {
@@ -1490,6 +1495,7 @@ select:focus-visible {
 
   .batch-upload-controls .save-result-button {
     width: 100%;
+    margin-top: 0;
   }
 
   .saved-results-toolbar {

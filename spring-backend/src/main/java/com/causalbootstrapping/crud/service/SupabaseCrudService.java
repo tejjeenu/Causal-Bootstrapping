@@ -41,8 +41,12 @@ public class SupabaseCrudService {
         this.objectMapper = objectMapper;
     }
 
-    public List<RiskRule> getRiskSettings(String accessToken) {
-        String path = properties.getSupabaseRiskSettingsTable() + "?select=threshold,label&order=threshold.asc";
+    public List<RiskRule> getRiskSettings(String accessToken, String userId) {
+        String encodedUserId = URLEncoder.encode(userId, StandardCharsets.UTF_8);
+        String path = properties.getSupabaseRiskSettingsTable()
+            + "?select=threshold,label"
+            + "&user_id=eq." + encodedUserId
+            + "&order=threshold.asc";
         JsonNode data = supabaseClientService.restRequest("GET", path, null, accessToken, null);
         if (!data.isArray()) {
             throw new ApiException(502, "Unexpected response when loading risk settings.");
@@ -53,21 +57,23 @@ public class SupabaseCrudService {
             rules.add(mapRiskRule(node));
         }
         if (rules.isEmpty()) {
-            return List.of(defaultLowRisk(), defaultMediumRisk(), defaultHighRisk());
+            return insertDefaultRiskSettings(accessToken, userId);
         }
         return normalizeRules(rules);
     }
 
-    public List<RiskRule> replaceRiskSettings(String accessToken, List<RiskRule> inputRules) {
+    public List<RiskRule> replaceRiskSettings(String accessToken, String userId, List<RiskRule> inputRules) {
         List<RiskRule> rules = normalizeRules(inputRules);
         validateRuleSet(rules);
 
-        String deletePath = properties.getSupabaseRiskSettingsTable() + "?user_id=not.is.null";
+        String encodedUserId = URLEncoder.encode(userId, StandardCharsets.UTF_8);
+        String deletePath = properties.getSupabaseRiskSettingsTable() + "?user_id=eq." + encodedUserId;
         supabaseClientService.restRequest("DELETE", deletePath, null, accessToken, "return=minimal");
 
         ArrayNode payload = objectMapper.createArrayNode();
         for (RiskRule rule : rules) {
             ObjectNode node = objectMapper.createObjectNode();
+            node.put("user_id", userId);
             node.put("threshold", rule.threshold());
             node.put("label", rule.label().trim());
             node.put("updated_at", Instant.now().toString());
@@ -92,17 +98,48 @@ public class SupabaseCrudService {
         return normalizeRules(savedRules);
     }
 
-    public int syncPredictionResultLabels(String accessToken, List<RiskRule> inputRules) {
+    private List<RiskRule> insertDefaultRiskSettings(String accessToken, String userId) {
+        ArrayNode payload = objectMapper.createArrayNode();
+        for (RiskRule rule : List.of(defaultLowRisk(), defaultMediumRisk(), defaultHighRisk())) {
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("user_id", userId);
+            node.put("threshold", rule.threshold());
+            node.put("label", rule.label());
+            node.put("updated_at", Instant.now().toString());
+            payload.add(node);
+        }
+
+        JsonNode data = supabaseClientService.restRequest(
+            "POST",
+            properties.getSupabaseRiskSettingsTable(),
+            payload,
+            accessToken,
+            "return=representation"
+        );
+        if (!data.isArray()) {
+            throw new ApiException(502, "Unexpected response when initializing default risk settings.");
+        }
+
+        List<RiskRule> savedRules = new ArrayList<>();
+        for (JsonNode node : data) {
+            savedRules.add(mapRiskRule(node));
+        }
+        return normalizeRules(savedRules);
+    }
+
+    public int syncPredictionResultLabels(String accessToken, String userId, List<RiskRule> inputRules) {
         List<RiskRule> rules = normalizeRules(inputRules);
         validateRuleSet(rules);
 
         int updatedCount = 0;
         int pageSize = 200;
         int offset = 0;
+        String encodedUserId = URLEncoder.encode(userId, StandardCharsets.UTF_8);
 
         while (true) {
             String path = properties.getSupabaseResultsTable()
                 + "?select=id,risk_probability,risk_label"
+                + "&user_id=eq." + encodedUserId
                 + "&order=created_at.desc"
                 + "&limit=" + pageSize
                 + "&offset=" + offset;
@@ -133,7 +170,8 @@ public class SupabaseCrudService {
                 patch.put("risk_label", expected);
                 String patchPath = properties.getSupabaseResultsTable()
                     + "?id=eq."
-                    + URLEncoder.encode(id, StandardCharsets.UTF_8);
+                    + URLEncoder.encode(id, StandardCharsets.UTF_8)
+                    + "&user_id=eq." + encodedUserId;
                 supabaseClientService.restRequest("PATCH", patchPath, patch, accessToken, "return=minimal");
                 updatedCount++;
             }

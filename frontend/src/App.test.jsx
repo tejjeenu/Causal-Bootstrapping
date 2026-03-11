@@ -240,6 +240,91 @@ test('authenticated users can see saved patient names in history table', async (
   })
 })
 
+test('logout resets form, result, and batch state to defaults', async () => {
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: true, user: { id: 'u1', email: 'u@example.com' } } },
+    'GET /crud-api/risk-settings': { body: { rules: defaultRules } },
+    'GET /crud-api/results': {
+      body: {
+        results: [
+          {
+            id: 'saved-1',
+            created_at: '2026-02-24T12:00:00Z',
+            patient_first_name: 'Ada',
+            patient_last_name: 'Lovelace',
+            clinical_inputs: { age: 58, sex: 'Male', cp: 'Asymptomatic', trestbps: 132, chol: 224, thalach: 173, oldpeak: 3.2, ca: 2 },
+            risk_probability: 0.72,
+            risk_percent: 72,
+            risk_label: 'High Risk',
+            uncertainty_std: 0.04,
+            uncertainty_percent: 4,
+            confidence_interval_95: [0.64, 0.8],
+          },
+        ],
+      },
+    },
+    'POST /ml-api/predict': { body: predictionResponse },
+    'POST /ml-api/predict/batch-csv': {
+      body: {
+        total_rows: 1,
+        predictions: [
+          {
+            row_number: 2,
+            patient_first_name: 'Ada',
+            patient_last_name: 'Lovelace',
+            clinical_inputs: {
+              age: 58,
+              sex: 'Male',
+              cp: 'Asymptomatic',
+              trestbps: 132,
+              chol: 224,
+              thalach: 173,
+              oldpeak: 3.2,
+              ca: 2,
+            },
+            prediction: {
+              ...predictionResponse,
+            },
+          },
+        ],
+      },
+    },
+    'POST /crud-api/auth/logout': { body: { message: 'logged out' } },
+  })
+
+  render(<App />)
+
+  fireEvent.change(screen.getByLabelText('Age'), { target: { value: '63' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Predict Risk' }))
+  expect(await screen.findByText('High Risk')).toBeInTheDocument()
+
+  const fileInput = screen.getByLabelText(/Patient CSV file/i)
+  const file = new File(
+    [
+      'patient_first_name,patient_last_name,age,trestbps,chol,thalach,oldpeak,ca,sex,cp,fbs,restecg,exang,slope,thal\n'
+      + 'Ada,Lovelace,58,132,224,173,3.2,2,Male,Asymptomatic,<=120,Normal ECG,Yes Ex Angina,Flat,Reversible Defect\n',
+    ],
+    'patients.csv',
+    { type: 'text/csv' },
+  )
+  fireEvent.change(fileInput, { target: { files: [file] } })
+  fireEvent.click(screen.getByRole('button', { name: 'Run Batch Prediction' }))
+  expect(await screen.findByText('Batch prediction complete. Processed 1 row(s).')).toBeInTheDocument()
+  expect(screen.getAllByText('Ada').length).toBeGreaterThan(0)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Log out' }))
+
+  await waitFor(() => {
+    expect(screen.getByText('Submit the form to see prediction output.')).toBeInTheDocument()
+  })
+  expect(screen.getByRole('button', { name: 'Sign In / Sign Up' })).toBeInTheDocument()
+  expect(screen.queryByText('Custom Risk Classification')).not.toBeInTheDocument()
+  expect(screen.queryByText('My Saved Results')).not.toBeInTheDocument()
+  expect(screen.queryByText('Batch Results')).not.toBeInTheDocument()
+  expect(screen.queryByText('Batch prediction complete. Processed 1 row(s).')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Age')).toHaveValue(58)
+})
+
 test('batch csv prediction processes multiple patients', async () => {
   globalThis.fetch = createFetchMock({
     'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },

@@ -47,7 +47,7 @@ Compose stack behavior:
 - Spring container reads Supabase/auth settings from `spring-backend/.env` (not `fastapi-backend/.env`).
 - FastAPI loads:
   - model artifact: `models/xgboost_backdoor_best_artifact.joblib`
-  - normalization settings: `/app/models/initial_eda_normalization_settings.json`
+  - normalization settings: `models/initial_eda_normalization_settings.json`
   - the shipped model artifact is a sigmoid-calibrated XGBoost bundle
 
 Practical deployment interpretation:

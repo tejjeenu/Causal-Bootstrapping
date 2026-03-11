@@ -3,6 +3,7 @@ package com.causalbootstrapping.crud.controller;
 import com.causalbootstrapping.crud.dto.RiskSettingsResponse;
 import com.causalbootstrapping.crud.dto.RiskSettingsUpsertRequest;
 import com.causalbootstrapping.crud.dto.RiskRule;
+import com.causalbootstrapping.crud.dto.AuthUser;
 import com.causalbootstrapping.crud.service.AuthSessionGuard;
 import com.causalbootstrapping.crud.service.OriginGuard;
 import com.causalbootstrapping.crud.service.SupabaseCrudService;
@@ -34,9 +35,9 @@ public class RiskSettingsController {
 
     @GetMapping
     public RiskSettingsResponse getRiskSettings(HttpServletRequest request) {
-        authSessionGuard.requireAuthenticatedUser(request);
+        AuthUser user = authSessionGuard.requireAuthenticatedUser(request);
         String accessToken = authSessionGuard.requireAccessToken(request);
-        List<RiskRule> rules = supabaseCrudService.getRiskSettings(accessToken);
+        List<RiskRule> rules = supabaseCrudService.getRiskSettings(accessToken, user.id());
         return new RiskSettingsResponse(rules);
     }
 
@@ -46,10 +47,10 @@ public class RiskSettingsController {
         HttpServletRequest request
     ) {
         originGuard.enforceTrustedOrigin(request);
-        authSessionGuard.requireAuthenticatedUser(request);
+        AuthUser user = authSessionGuard.requireAuthenticatedUser(request);
         String accessToken = authSessionGuard.requireAccessToken(request);
-        List<RiskRule> savedRules = supabaseCrudService.replaceRiskSettings(accessToken, payload.rules());
-        supabaseCrudService.syncPredictionResultLabels(accessToken, savedRules);
+        List<RiskRule> savedRules = supabaseCrudService.replaceRiskSettings(accessToken, user.id(), payload.rules());
+        supabaseCrudService.syncPredictionResultLabels(accessToken, user.id(), savedRules);
         return new RiskSettingsResponse(savedRules);
     }
 }
