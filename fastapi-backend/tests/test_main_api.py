@@ -142,6 +142,32 @@ def test_predict_rejects_custom_rules_without_zero_threshold(monkeypatch, test_s
     assert "One threshold must be 0" in response.text
 
 
+def test_predict_rejects_out_of_range_numeric_value(monkeypatch, test_settings, prediction_payload):
+    monkeypatch.setattr(app_main, "settings", test_settings)
+    client = TestClient(app_main.app)
+
+    payload = dict(prediction_payload)
+    payload["thalach"] = 201
+
+    response = client.post("/predict", json=payload)
+
+    assert response.status_code == 422
+    assert "thalach" in response.text
+
+
+def test_predict_rejects_out_of_range_integer_value(monkeypatch, test_settings, prediction_payload):
+    monkeypatch.setattr(app_main, "settings", test_settings)
+    client = TestClient(app_main.app)
+
+    payload = dict(prediction_payload)
+    payload["ca"] = 4
+
+    response = client.post("/predict", json=payload)
+
+    assert response.status_code == 422
+    assert "ca" in response.text
+
+
 def test_predict_from_input_uses_cache_for_identical_requests(monkeypatch, prediction_payload):
     calls = {"count": 0}
 
@@ -242,4 +268,35 @@ def test_predict_batch_csv_rejects_rules_without_zero_threshold(monkeypatch, tes
 
     assert response.status_code == 422
     assert "One threshold must be 0" in response.json()["detail"]
+
+
+def test_predict_batch_csv_rejects_out_of_range_numeric_value(monkeypatch, test_settings):
+    monkeypatch.setattr(app_main, "settings", test_settings)
+    client = TestClient(app_main.app)
+    csv_content = (
+        "patient_first_name,patient_last_name,age,trestbps,chol,thalach,oldpeak,ca,sex,cp,fbs,restecg,exang,slope,thal\n"
+        "Ada,Lovelace,58,132,224,201,3.2,2,Male,Asymptomatic,<=120,Normal ECG,Yes Ex Angina,Flat,Reversible Defect\n"
+    )
+
+    response = client.post(
+        "/predict/batch-csv",
+        files={"file": ("patients.csv", csv_content, "text/csv")},
+    )
+
+    assert response.status_code == 422
+    assert "Row 2" in response.json()["detail"]
+    assert "thalach" in response.json()["detail"]
+
+
+def test_predict_batch_csv_rejects_non_csv_upload(monkeypatch, test_settings):
+    monkeypatch.setattr(app_main, "settings", test_settings)
+    client = TestClient(app_main.app)
+
+    response = client.post(
+        "/predict/batch-csv",
+        files={"file": ("patients.txt", "not,csv,data", "text/plain")},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Uploaded file must be a CSV."
 

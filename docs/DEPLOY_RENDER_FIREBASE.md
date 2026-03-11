@@ -6,6 +6,28 @@ This guide deploys:
 - FastAPI backend (`fastapi-backend/`) to Render (Docker Web Service)
 - Spring backend (`spring-backend/`) to Render (Docker Web Service)
 
+## Deployment Shape
+
+This application is deployed as three separate units because they do different jobs and have different runtime needs:
+
+- Firebase Hosting serves the static frontend build
+- Render runs the FastAPI inference service inside a Docker container
+- Render runs the Spring Boot CRUD/auth service inside a separate Docker container
+
+Why Docker is used for the backends:
+
+- it gives Render a complete, reproducible runtime image rather than depending on platform auto-detection
+- the model artifact and normalization file are copied into the FastAPI image at build time
+- Python and Java dependencies are installed once into their images, so production behavior is closer to local Docker testing
+- deployment becomes "build image, inject env vars, run container", which is simpler to reason about than hand-configuring a server
+
+Operationally, the deployed request path is:
+
+1. Browser requests the Firebase-hosted frontend.
+2. Frontend sends inference requests to the FastAPI Render URL and auth/CRUD requests to the Spring Render URL.
+3. FastAPI loads the calibrated model artifact from `/app/models/...` inside its container.
+4. Spring Boot handles login/session/history storage against Supabase.
+
 ## 1) Prerequisites
 
 - GitHub repo connected to Render
@@ -31,6 +53,14 @@ NORMALIZATION_SETTINGS_PATH=/app/models/initial_eda_normalization_settings.json
 INFERENCE_CACHE_SIZE=512
 CORS_ORIGINS=https://<your-firebase-site>.web.app,https://<your-firebase-site>.firebaseapp.com
 ```
+
+The referenced artifact is the calibrated XGBoost bundle committed in `fastapi-backend/models/`. If you retrain or rebuild it locally, redeploy Render so the updated artifact is copied into the image.
+
+Why this matters for deployment:
+
+- Render does not "see" your local Python environment or local model files
+- it only sees the Docker build context committed in the repo
+- if `xgboost_backdoor_best_artifact.joblib` changes locally, the deployed service will not use it until a new Render deploy rebuilds the image
 
 Deploy and copy the service URL, for example:
 

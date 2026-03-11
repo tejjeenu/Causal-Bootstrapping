@@ -277,7 +277,9 @@ async def predict_batch_csv(
     file: UploadFile = File(...),
     risk_rules_json: str | None = Form(default=None),
 ) -> BatchPredictionResponse:
-    if file.content_type and "csv" not in file.content_type.lower():
+    filename = str(file.filename or "").lower()
+    content_type = str(file.content_type or "").lower()
+    if not filename.endswith(".csv") and (content_type and "csv" not in content_type):
         raise HTTPException(status_code=422, detail="Uploaded file must be a CSV.")
 
     raw_bytes = await file.read()

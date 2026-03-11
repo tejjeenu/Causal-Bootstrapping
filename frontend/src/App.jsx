@@ -94,6 +94,13 @@ const BATCH_TEMPLATE_EXAMPLE_ROW = [
   'Reversible Defect',
 ]
 
+const isCsvFile = (file) => {
+  if (!file) return false
+  const fileName = String(file.name ?? '').toLowerCase()
+  const fileType = String(file.type ?? '').toLowerCase()
+  return fileName.endsWith('.csv') || fileType.includes('csv')
+}
+
 function CurvedSelect({ id, value, options, onChange }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
@@ -121,7 +128,7 @@ function CurvedSelect({ id, value, options, onChange }) {
   }, [open])
 
   return (
-    <div className="curved-select" ref={rootRef}>
+    <div className={`curved-select${open ? ' open' : ''}`} ref={rootRef}>
       <button
         id={id}
         type="button"
@@ -579,6 +586,10 @@ function App() {
     setBatchSaveMessage('')
     if (!batchFile) {
       setBatchError('Upload a CSV file first.')
+      return
+    }
+    if (!isCsvFile(batchFile)) {
+      setBatchError('Uploaded batch file must be a CSV.')
       return
     }
     const formData = new FormData()
@@ -1300,7 +1311,7 @@ function App() {
       )}
 
       <main className="layout" id="main-content">
-        <section className="panel reveal delay-2" aria-busy={loading}>
+        <section className="panel clinical-input-panel reveal delay-2" aria-busy={loading}>
           <h2>Clinical Inputs</h2>
           <form onSubmit={handleSubmit} className="prediction-form">
             <div className="field-grid">
@@ -1420,20 +1431,27 @@ function App() {
             <input
               type="file"
               accept=".csv,text/csv"
+              aria-invalid={Boolean(batchError && batchError.toLowerCase().includes('csv'))}
+              aria-describedby="batch-file-hint batch-file-error"
               onChange={(event) => {
-                setBatchFile(event.target.files?.[0] ?? null)
+                const nextFile = event.target.files?.[0] ?? null
+                setBatchFile(nextFile)
                 setBatchError('')
                 setBatchMessage('')
                 setBatchSaveError('')
                 setBatchSaveMessage('')
+                if (nextFile && !isCsvFile(nextFile)) {
+                  setBatchError('Uploaded batch file must be a CSV.')
+                }
               }}
             />
+            <span id="batch-file-hint" className="field-hint">Only `.csv` files are accepted for batch prediction.</span>
           </label>
           <button type="button" className="save-result-button" onClick={runBatchPrediction} disabled={batchLoading}>
             {batchLoading ? 'Running...' : 'Run Batch Prediction'}
           </button>
         </div>
-        {batchError && <p className="error" role="alert">{batchError}</p>}
+        {batchError && <p className="error" id="batch-file-error" role="alert">{batchError}</p>}
         {batchMessage && <p className="save-message">{batchMessage}</p>}
         {batchSaveError && <p className="error" role="alert">{batchSaveError}</p>}
         {batchSaveMessage && <p className="save-message">{batchSaveMessage}</p>}

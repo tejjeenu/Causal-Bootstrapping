@@ -16,6 +16,29 @@ cd fastapi-backend
 uvicorn app.main:app --reload --port 8000
 ```
 
+## Calibration Rationale
+
+The API returns calibrated probabilities rather than raw XGBoost probabilities.
+
+Why calibration was added:
+
+- the raw model showed a tendency to return very extreme values close to `0%` or `100%`
+- that is acceptable for ranking-only workflows, but less acceptable when the UI displays a percentage as an estimated patient risk
+- calibration adjusts the probability scale so the numbers are better aligned with observed outcome frequencies
+
+What calibration does here:
+
+- it does not replace XGBoost with a different model family
+- it does not change the input contract or environment variable names
+- it wraps the fitted XGBoost classifier with a post-hoc probability mapping
+- in this repo, the shipped artifact uses sigmoid calibration, which is a reasonable choice for modest sample sizes because it is more stable than a highly flexible mapping
+
+How to interpret the result:
+
+- discrimination asks "are higher-risk patients scored above lower-risk patients?"
+- calibration asks "does a predicted 70% behave like about 70% risk in aggregate?"
+- this project wants both, because the app presents risk as a percentage rather than only a ranking
+
 ## Endpoints
 
 ### `GET /health`
@@ -34,6 +57,8 @@ Example response:
 ### `GET /model-info`
 
 Returns metadata about the active model bundle.
+
+For the current shipped artifact, `selection_metrics` includes a `probability_calibration` block describing the post-hoc calibration method used for the deployed XGBoost probabilities.
 
 ### `POST /predict`
 
@@ -102,7 +127,7 @@ Example response:
   "uncertainty_std": 0.048221,
   "uncertainty_percent": 4.82,
   "confidence_interval_95": [0.626924, 0.81595],
-  "model_name": "NeuralNetwork",
+  "model_name": "XGBoost (sigmoid-calibrated)",
   "training_source": "heart_disease_preprocessed_backdoor.csv",
   "risk_rules": [
     { "threshold": 0.0, "label": "Low Risk" },
@@ -217,6 +242,8 @@ curl -X POST "http://localhost:8000/predict/batch-csv" \
 - If your app has user-specific thresholds, pass them in `risk_rules` per request.
 - Persist output with your own service (in this repo: Spring CRUD API).
 - Identical inference requests are cached in-memory per process. Tune with `INFERENCE_CACHE_SIZE` (`0` disables cache).
+- Reported probabilities now come from a calibrated XGBoost model, but they should still be treated as model-estimated risk rather than a clinical diagnosis.
+- If you inspect `/model-info`, compare `selection_metrics.holdout` with `selection_metrics.holdout_uncalibrated` to see the effect of calibration on proper scoring metrics such as Brier score and log loss.
 
 ## Other Use Cases
 

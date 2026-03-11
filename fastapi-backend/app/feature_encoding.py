@@ -85,7 +85,7 @@ def load_normalization_settings() -> dict:
     if not path.exists():
         raise FileNotFoundError(
             f"Normalization settings file not found at '{path}'. "
-            "Run the normalization export cell in `initial EDA.ipynb` or provide NORMALIZATION_SETTINGS_PATH."
+            "Run the normalization export cell in `research/notebooks/initial EDA.ipynb` or provide NORMALIZATION_SETTINGS_PATH."
         )
 
     settings = json.loads(path.read_text(encoding="utf-8"))

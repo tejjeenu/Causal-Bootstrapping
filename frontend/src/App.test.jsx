@@ -20,6 +20,15 @@ const predictionResponse = {
   risk_rules: defaultRules,
 }
 
+const numericRangeCases = [
+  { label: 'Age', invalidValue: '0', expectedMessage: 'Age must be between 1 and 120.' },
+  { label: 'Resting Blood Pressure (mm Hg)', invalidValue: '49', expectedMessage: 'Resting Blood Pressure (mm Hg) must be between 50 and 250.' },
+  { label: 'Serum Cholesterol (mg/dl)', invalidValue: '701', expectedMessage: 'Serum Cholesterol (mg/dl) must be between 50 and 700.' },
+  { label: 'Maximum Heart Rate (beats per minute)', invalidValue: '201', expectedMessage: 'Maximum Heart Rate (beats per minute) must be between 120 and 200.' },
+  { label: 'Oldpeak', invalidValue: '10.1', expectedMessage: 'Oldpeak must be between 0 and 10.' },
+  { label: 'Number of Major Vessels', invalidValue: '4', expectedMessage: 'Number of Major Vessels must be between 0 and 3.' },
+]
+
 function jsonResponse(body, status = 200) {
   return {
     ok: status >= 200 && status < 300,
@@ -88,6 +97,18 @@ test('form validation shows numeric-range error', async () => {
   fireEvent.submit(screen.getByRole('button', { name: 'Predict Risk' }).closest('form'))
 
   expect(await screen.findByText('Age must be between 1 and 120.')).toBeInTheDocument()
+})
+
+test.each(numericRangeCases)('form validation rejects out-of-range value for $label', async ({ label, invalidValue, expectedMessage }) => {
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+  })
+
+  render(<App />)
+  fireEvent.change(screen.getByLabelText(label), { target: { value: invalidValue } })
+  fireEvent.submit(screen.getByRole('button', { name: 'Predict Risk' }).closest('form'))
+
+  expect(await screen.findByText(expectedMessage)).toBeInTheDocument()
 })
 
 test('save flow requires patient first and last name', async () => {
@@ -258,7 +279,7 @@ test('batch csv prediction processes multiple patients', async () => {
   })
 
   render(<App />)
-  const fileInput = screen.getByLabelText('Patient CSV file')
+  const fileInput = screen.getByLabelText(/Patient CSV file/i)
   const file = new File(
     [
       'patient_first_name,patient_last_name,age,trestbps,chol,thalach,oldpeak,ca,sex,cp,fbs,restecg,exang,slope,thal\n'
@@ -273,6 +294,23 @@ test('batch csv prediction processes multiple patients', async () => {
 
   expect(await screen.findByText('Batch prediction complete. Processed 1 row(s).')).toBeInTheDocument()
   expect(screen.getAllByText('Ada').length).toBeGreaterThan(0)
+})
+
+test('batch prediction rejects non-csv uploads before request', async () => {
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+  })
+
+  render(<App />)
+  const fileInput = screen.getByLabelText(/Patient CSV file/i)
+  const file = new File(['not,a,csv,for,this,app'], 'patients.txt', { type: 'text/plain' })
+
+  fireEvent.change(fileInput, { target: { files: [file] } })
+  expect(await screen.findByText('Uploaded batch file must be a CSV.')).toBeInTheDocument()
+  expect(fileInput).toHaveAttribute('aria-invalid', 'true')
+  fireEvent.click(screen.getByRole('button', { name: 'Run Batch Prediction' }))
+
+  expect(globalThis.fetch).toHaveBeenCalledTimes(1)
 })
 
 test('batch tile appears above saved results for signed-in users', async () => {
@@ -357,7 +395,7 @@ test('batch prediction results can be saved to history', async () => {
   })
 
   render(<App />)
-  const fileInput = screen.getByLabelText('Patient CSV file')
+  const fileInput = screen.getByLabelText(/Patient CSV file/i)
   const file = new File(
     [
       'patient_first_name,patient_last_name,age,trestbps,chol,thalach,oldpeak,ca,sex,cp,fbs,restecg,exang,slope,thal\n'

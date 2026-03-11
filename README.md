@@ -35,7 +35,7 @@ The intent is to prioritize the model that remains most reliable after this stre
 
 ## Causal Diagram
 
-![Causal DAG used for deconfounding and model selection](causaldiagram.png)
+![Causal DAG used for deconfounding and model selection](research/assets/causaldiagram.png)
 
 ---
 
@@ -65,7 +65,14 @@ Interpretation of "causally robust" in this project:
 - This is an intended robustness proxy under stated DAG assumptions, not proof of true causal identification.
 
 Current repository snapshot:
-- The FastAPI service is configured to use a single XGBoost backdoor-tuned artifact path via `MODEL_ARTIFACT_PATH` (no fallback model path).
+- The FastAPI service is configured to use a single sigmoid-calibrated XGBoost artifact path via `MODEL_ARTIFACT_PATH` (no fallback model path).
+- The shipped inference artifact is rebuilt from `research/data/heart_disease_preprocessed_backdoor.csv` with post-hoc probability calibration to reduce the extreme 0/100-style probabilities produced by the raw model.
+
+Repository layout:
+- `frontend/`, `fastapi-backend/`, and `spring-backend/` contain the deployable web application services.
+- `research/notebooks/` contains the standalone analysis and training notebooks.
+- `research/data/` contains the research CSV datasets used by those notebooks.
+- `research/assets/` contains causal diagrams and supporting research assets.
 
 ---
 
@@ -198,6 +205,27 @@ Clinical intent in the web app:
 - Surface predictions from the model chosen for the intended deployment context, with preference for causally robust behavior over the highest raw associational score.
 - Let clinical domain knowledge be represented explicitly (for example via configurable risk settings/thresholds and labels).
 - Improve reliability of patient-level risk estimates by combining data-driven learning with domain-informed rules.
+
+Accessibility and device portability:
+- The frontend includes keyboard-oriented accessibility patterns such as a skip link, visible focus states, semantic form labels, ARIA live regions, alert messaging, dialog semantics, and accessible custom dropdown roles.
+- Error states are exposed to assistive technologies through `role="alert"`, `aria-invalid`, and `aria-describedby` where relevant.
+- Motion-sensitive users are supported with reduced-motion handling via `prefers-reduced-motion`.
+- The layout is responsive across desktop, tablet, and phone breakpoints so prediction, authentication, batch upload, and saved-results workflows remain usable across multiple device sizes.
+- Mobile-specific spacing and stacking behavior were adjusted so controls such as authentication actions and categorical dropdowns remain readable and usable on smaller screens.
+- Batch upload guidance and file-type validation are surfaced in the UI so users receive immediate feedback rather than only backend failure messages.
+
+Probability calibration:
+- The deployed FastAPI artifact is now a sigmoid-calibrated XGBoost classifier rather than the raw XGBoost probability output.
+- Calibration is intended to make reported probabilities less overconfident while preserving ranking performance as much as possible.
+- To rebuild the calibrated artifact locally, run `python fastapi-backend/scripts/build_calibrated_xgboost_artifact.py`.
+
+Calibration reasoning:
+- Raw gradient-boosted models often rank patients well but produce probabilities that are too extreme.
+- In this project, the uncalibrated model frequently clustered outputs near 0 or 1, which is undesirable when the UI presents the number as a patient-facing risk estimate.
+- Post-hoc calibration keeps the trained decision function but learns a mapping from raw score to probability using held-out structure from the training data.
+- Sigmoid calibration was chosen as a conservative option for a relatively small dataset because it usually overfits less than isotonic calibration.
+- The goal is not to change which patients are relatively riskier than others; the goal is to make a predicted `p` behave more like an actual frequency estimate.
+- This is especially important here because the web app surfaces percentages, not only rank ordering or binary labels.
 
 See:
 

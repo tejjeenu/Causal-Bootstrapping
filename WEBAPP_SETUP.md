@@ -4,6 +4,16 @@
 
 From repo root:
 
+Docker is the closest local approximation to the deployed app shape:
+
+- each service runs in its own container, matching production separation
+- the frontend container serves the built React app through Nginx rather than the Vite dev server
+- the frontend talks to backends through Nginx proxy paths (`/ml-api` and `/crud-api`)
+- FastAPI loads the committed calibrated model artifact from the container filesystem
+- Spring Boot reads its own auth/CRUD settings independently from `spring-backend/.env`
+
+Use Docker Compose when you want to validate deployment behavior, container networking, and environment wiring rather than only local developer mode.
+
 ### First-time setup
 
 ```powershell
@@ -38,6 +48,14 @@ Compose stack behavior:
 - FastAPI loads:
   - model artifact: `models/xgboost_backdoor_best_artifact.joblib`
   - normalization settings: `/app/models/initial_eda_normalization_settings.json`
+  - the shipped model artifact is a sigmoid-calibrated XGBoost bundle
+
+Practical deployment interpretation:
+
+- `docker compose up --build` creates container images from each service's Dockerfile
+- those images package the code and runtime dependencies needed for the app to run consistently
+- the mounted environment variables tell each container where to find its model, API origins, and service-specific settings
+- once the containers are running, the browser only needs to talk to the frontend URL; Nginx handles routing to the two backends
 
 ### Verify stack status
 
@@ -70,6 +88,8 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 # optional: tune inference cache size per process (default 512)
 # $env:INFERENCE_CACHE_SIZE=1024
+# optional: rebuild the calibrated XGBoost artifact from the encoded backdoor dataset
+# python scripts/build_calibrated_xgboost_artifact.py
 python -m uvicorn app.main:app --reload --port 8000
 ```
 

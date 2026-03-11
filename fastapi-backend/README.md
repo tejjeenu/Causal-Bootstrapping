@@ -18,6 +18,17 @@ Expected files:
 - `fastapi-backend/models/xgboost_backdoor_best_artifact.joblib`
 - `fastapi-backend/models/initial_eda_normalization_settings.json`
 
+The primary artifact is a sigmoid-calibrated XGBoost bundle. This keeps the same API contract while reducing the overconfident probabilities produced by the raw model.
+
+To rebuild it from the encoded backdoor dataset:
+
+```powershell
+cd fastapi-backend
+python scripts/build_calibrated_xgboost_artifact.py
+```
+
+The script reads `..\research\data\heart_disease_preprocessed_backdoor.csv`, fits a calibrated classifier, and overwrites `models/xgboost_backdoor_best_artifact.joblib`.
+
 ## 3. Configure environment (`.env`)
 
 ```powershell
