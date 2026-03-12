@@ -7,6 +7,30 @@ Live web application:
 
 ---
 
+## Original Project Proposal
+
+This repository is based on a concrete applied causal machine learning proposal:
+
+- Start from the literature claim that angiographic coronary artery disease can be predicted from clinical features.
+- Use the UCI Heart Disease dataset as the benchmark prediction dataset.
+- Note that classical ML baselines on this task reach about `~82%` accuracy, but do not clearly outperform simple logistic regression.
+- Test the hypothesis that this predictive performance is mainly associational rather than causal.
+- Represent the problem with a simple DAG, with age and sex treated as major confounders of coronary artery disease.
+- Apply causal bootstrapping to deconfound the observational data, then re-evaluate how well classifiers still predict disease once confounding structure is reduced.
+
+In short, the proposal asks:
+
+> If a classifier performs well on the observational dataset, does that performance survive after deconfounding, or was it mostly learning confounded associations?
+
+This README and the rest of the repository should be read as the implementation of that proposal: causal assumptions are made explicit, observational data is stress-tested with causal bootstrapping, and the model chosen for deployment is the one judged most reliable under that framing.
+
+Proposal references:
+- Literature motivation: https://www.sciencedirect.com/science/article/pii/0002914989905249
+- Dataset: https://archive.ics.uci.edu/dataset/45/heart+disease
+- Causal bootstrapping method: https://arxiv.org/abs/1910.09648
+
+---
+
 ## Problem
 
 Many machine learning models report around 80-82% accuracy on the UCI Heart Disease angiographic CAD prediction task. However:
