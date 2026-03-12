@@ -191,15 +191,44 @@ In other words, the work is not only analytical; it is also translational, using
 
 ---
 
-## Web App Backend Split (2026)
-
-The web application now uses two backend services:
-
-- FastAPI (`fastapi-backend/`): ML inference only
-- Spring Boot (`spring-backend/`): auth + Supabase CRUD only
+## Application Architecture Choices (2026)
 
 Live web application:
 - https://cad-causal-risk-predictor.web.app/
+
+The web app is intentionally split into small, technology-specific modules rather than one large full-stack service.
+
+Core modules:
+- `frontend/`: React + Vite user interface, built as static assets and served behind a reverse proxy in the Docker stack.
+- `fastapi-backend/`: Python inference service for model loading, feature encoding, batch CSV prediction, and probability estimation.
+- `spring-backend/`: Java service for authentication, session handling, and CRUD over Supabase-backed user data.
+- `research/`: notebooks, datasets, and causal analysis assets kept outside the deployable runtime path.
+
+Why the app is modular:
+- The ML runtime is isolated from auth and persistence so model-serving code can stay in Python, where the training artifacts, preprocessing logic, and calibration workflow already live.
+- Auth and CRUD are isolated from inference so application state, user sessions, and Supabase integration can evolve without forcing changes to the ML API contract.
+- The split creates clear ownership boundaries: the frontend requests predictions from FastAPI, and only the Spring service reads or writes app-specific user data.
+- Research assets remain separate from deployable services so exploratory notebooks and training files do not become accidental runtime dependencies.
+- This structure also allows the inference API to be reused by other clients or scripts without carrying the rest of the web app with it.
+
+Why these runtime choices were made:
+- FastAPI was chosen for inference because the deployed artifact is a Python `joblib` bundle built from the same ecosystem used for training and calibration.
+- Spring Boot was chosen for auth and CRUD because the app needs a stable service layer around sessions, request validation, response DTOs, and Supabase-backed business rules.
+- The frontend stays thin and API-driven so browser code focuses on clinician workflows, accessibility, and validation rather than embedding backend concerns.
+
+Why Docker and Compose are part of the architecture:
+- Each service has its own Dockerfile so its runtime dependencies are packaged independently and can be started in a production-like shape.
+- `docker-compose.yml` exists to reproduce the real topology locally: one frontend container, one ML container, and one CRUD container on the same network.
+- This catches environment and integration problems earlier, especially model-path issues, proxy routing, service-to-service communication, and per-service configuration drift.
+- The frontend container uses Nginx to serve the built app and proxy `/ml-api/*` and `/crud-api/*`, which keeps the browser on a single origin and reduces CORS complexity.
+- The same path-based contract is mirrored in local development through the Vite proxy, so the frontend can call stable routes in both dev and deployment-style runs.
+
+Other significant design choices:
+- Spring reads its own `.env` file and FastAPI reads its own model/config environment, which keeps secrets and service configuration scoped to the service that actually needs them.
+- Supabase is used as the persistence layer, but access is mediated through the Spring API so table access rules, auth checks, and response shaping stay centralized.
+- The deployed model artifact is a sigmoid-calibrated XGBoost bundle rather than the raw classifier because the UI exposes patient-level risk percentages, not just score ranking.
+- Sigmoid calibration was chosen as the conservative fit for this dataset size: it reduces overconfident probabilities without changing the overall service contract or requiring a separate calibration service.
+- The frontend was built with responsive and accessible interaction patterns because the app is intended to remain usable across desktop and mobile clinician workflows, not just as a desktop demo.
 
 Clinical intent in the web app:
 - Surface predictions from the model chosen for the intended deployment context, with preference for causally robust behavior over the highest raw associational score.
