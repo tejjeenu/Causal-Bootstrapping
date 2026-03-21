@@ -121,6 +121,10 @@ Optional:
 - `AUTH_COOKIE_NAME`
 - `AUTH_COOKIE_SECURE`
 - `AUTH_COOKIE_SAMESITE`
+- `SIGNUP_PASSWORD_MIN_LENGTH`
+- `AUTH_RATE_LIMIT_WINDOW_SECONDS`
+- `AUTH_LOGIN_MAX_ATTEMPTS`
+- `AUTH_SIGNUP_MAX_ATTEMPTS`
 - `CORS_ORIGINS`
 
 ## 3) Start frontend
@@ -151,6 +155,13 @@ Run the table/RLS SQL from [`spring-backend/README.md`](spring-backend/README.md
 
 - FastAPI: inference only (`/health`, `/model-info`, `/predict`, `/predict/batch-csv`)
 - Spring Boot: auth + CRUD (`/auth/*`, `/risk-settings`, `/results`)
+
+Auth hardening notes:
+
+- signup now requires a longer passphrase-style password by default
+- login and signup are rate limited in the Spring service
+- non-local deployments must set `AUTH_COOKIE_SECURE=true`
+- the frontend now includes forgot-password and password-reset completion flows
 
 For standalone/third-party ML API integrations (Python, Node.js, batch jobs), see [`docs/ML_API.md`](docs/ML_API.md).
 

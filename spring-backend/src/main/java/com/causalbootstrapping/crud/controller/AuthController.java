@@ -4,8 +4,12 @@ import com.causalbootstrapping.crud.dto.AuthCredentials;
 import com.causalbootstrapping.crud.dto.AuthSessionResponse;
 import com.causalbootstrapping.crud.dto.AuthUser;
 import com.causalbootstrapping.crud.dto.MessageResponse;
+import com.causalbootstrapping.crud.dto.PasswordResetConfirmRequest;
+import com.causalbootstrapping.crud.dto.PasswordResetRequest;
 import com.causalbootstrapping.crud.error.ApiException;
+import com.causalbootstrapping.crud.service.AuthRateLimitService;
 import com.causalbootstrapping.crud.service.OriginGuard;
+import com.causalbootstrapping.crud.service.PasswordPolicyService;
 import com.causalbootstrapping.crud.service.SessionService;
 import com.causalbootstrapping.crud.service.SupabaseAuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,27 +29,43 @@ public class AuthController {
     private final SupabaseAuthService supabaseAuthService;
     private final SessionService sessionService;
     private final OriginGuard originGuard;
+    private final PasswordPolicyService passwordPolicyService;
+    private final AuthRateLimitService authRateLimitService;
 
     public AuthController(
         SupabaseAuthService supabaseAuthService,
         SessionService sessionService,
-        OriginGuard originGuard
+        OriginGuard originGuard,
+        PasswordPolicyService passwordPolicyService,
+        AuthRateLimitService authRateLimitService
     ) {
         this.supabaseAuthService = supabaseAuthService;
         this.sessionService = sessionService;
         this.originGuard = originGuard;
+        this.passwordPolicyService = passwordPolicyService;
+        this.authRateLimitService = authRateLimitService;
     }
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthSessionResponse signUp(
         @Valid @RequestBody AuthCredentials credentials,
+        HttpServletRequest request,
         HttpServletResponse response
     ) {
-        SupabaseAuthService.AuthSessionData sessionData = supabaseAuthService.signUp(
-            credentials.email(),
-            credentials.password()
-        );
+        authRateLimitService.checkSignupAllowed(request, credentials.email());
+        passwordPolicyService.validateForSignup(credentials.email(), credentials.password());
+
+        SupabaseAuthService.AuthSessionData sessionData;
+        try {
+            sessionData = supabaseAuthService.signUp(credentials.email(), credentials.password());
+        } catch (ApiException exception) {
+            if (shouldCountAuthFailure(exception)) {
+                authRateLimitService.recordSignupFailure(request, credentials.email());
+            }
+            throw exception;
+        }
+        authRateLimitService.resetSignupFailures(request, credentials.email());
         if (sessionData.accessToken() != null && !sessionData.accessToken().isBlank()) {
             sessionService.setAuthCookie(response, sessionData.accessToken(), sessionData.expiresIn());
         }
@@ -58,11 +78,23 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthSessionResponse login(@Valid @RequestBody AuthCredentials credentials, HttpServletResponse response) {
-        SupabaseAuthService.AuthSessionData sessionData = supabaseAuthService.signIn(
-            credentials.email(),
-            credentials.password()
-        );
+    public AuthSessionResponse login(
+        @Valid @RequestBody AuthCredentials credentials,
+        HttpServletRequest request,
+        HttpServletResponse response
+    ) {
+        authRateLimitService.checkLoginAllowed(request, credentials.email());
+
+        SupabaseAuthService.AuthSessionData sessionData;
+        try {
+            sessionData = supabaseAuthService.signIn(credentials.email(), credentials.password());
+        } catch (ApiException exception) {
+            if (shouldCountAuthFailure(exception)) {
+                authRateLimitService.recordLoginFailure(request, credentials.email());
+            }
+            throw exception;
+        }
+        authRateLimitService.resetLoginFailures(request, credentials.email());
         sessionService.setAuthCookie(response, sessionData.accessToken(), sessionData.expiresIn());
 
         return new AuthSessionResponse(true, sessionData.user(), false);
@@ -102,5 +134,31 @@ public class AuthController {
         }
         sessionService.clearAuthCookie(response);
         return new MessageResponse("Logged out.");
+    }
+
+    @PostMapping("/password-reset/request")
+    public MessageResponse requestPasswordReset(
+        @Valid @RequestBody PasswordResetRequest payload,
+        HttpServletRequest request
+    ) {
+        String redirectTo = originGuard.enforceTrustedOrigin(request);
+        supabaseAuthService.requestPasswordReset(payload.email(), redirectTo);
+        return new MessageResponse("If the email exists, a reset link has been sent.");
+    }
+
+    @PostMapping("/password-reset/confirm")
+    public AuthSessionResponse confirmPasswordReset(
+        @Valid @RequestBody PasswordResetConfirmRequest payload,
+        HttpServletResponse response
+    ) {
+        passwordPolicyService.validateForSignup(null, payload.password());
+        AuthUser user = supabaseAuthService.updatePassword(payload.accessToken(), payload.password());
+        sessionService.setAuthCookie(response, payload.accessToken(), payload.expiresIn());
+        return new AuthSessionResponse(true, user, false);
+    }
+
+    private boolean shouldCountAuthFailure(ApiException exception) {
+        int statusCode = exception.getStatusCode();
+        return statusCode == 400 || statusCode == 401 || statusCode == 403 || statusCode == 422;
     }
 }

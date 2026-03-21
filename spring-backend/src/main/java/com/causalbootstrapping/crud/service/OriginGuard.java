@@ -5,6 +5,7 @@ import com.causalbootstrapping.crud.error.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
@@ -12,15 +13,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class OriginGuard {
     private final Set<String> allowedOrigins;
+    private final String defaultAllowedOrigin;
 
     public OriginGuard(ApplicationProperties properties) {
         this.allowedOrigins = properties.getAllowedOrigins().stream()
             .map(value -> value == null ? "" : value.trim().toLowerCase())
             .filter(value -> !value.isEmpty())
-            .collect(Collectors.toSet());
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+        this.defaultAllowedOrigin = this.allowedOrigins.stream().findFirst().orElse(null);
     }
 
-    public void enforceTrustedOrigin(HttpServletRequest request) {
+    public String enforceTrustedOrigin(HttpServletRequest request) {
         String origin = request.getHeader("Origin");
         String referer = request.getHeader("Referer");
 
@@ -29,7 +32,7 @@ public class OriginGuard {
             if (normalized == null || !allowedOrigins.contains(normalized)) {
                 throw new ApiException(403, "Request origin is not allowed.");
             }
-            return;
+            return normalized;
         }
 
         if (referer != null && !referer.isBlank()) {
@@ -37,7 +40,10 @@ public class OriginGuard {
             if (normalized == null || !allowedOrigins.contains(normalized)) {
                 throw new ApiException(403, "Request origin is not allowed.");
             }
+            return normalized;
         }
+
+        return defaultAllowedOrigin;
     }
 
     private String normalizeOrigin(String raw) {

@@ -1,6 +1,7 @@
 package com.causalbootstrapping.crud.config;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -21,6 +22,14 @@ public class ApplicationProperties {
     private boolean authCookieSecure = false;
     private String authCookieSameSite = "Lax";
     private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
+    @Positive
+    private int signupPasswordMinLength = 12;
+    @Positive
+    private int authRateLimitWindowSeconds = 900;
+    @Positive
+    private int authLoginMaxAttempts = 8;
+    @Positive
+    private int authSignupMaxAttempts = 5;
 
     public String getSupabaseUrl() {
         return supabaseUrl;
@@ -84,5 +93,37 @@ public class ApplicationProperties {
 
     public void setAllowedOrigins(List<String> allowedOrigins) {
         this.allowedOrigins = allowedOrigins;
+    }
+
+    public int getSignupPasswordMinLength() {
+        return signupPasswordMinLength;
+    }
+
+    public void setSignupPasswordMinLength(int signupPasswordMinLength) {
+        this.signupPasswordMinLength = signupPasswordMinLength;
+    }
+
+    public int getAuthRateLimitWindowSeconds() {
+        return authRateLimitWindowSeconds;
+    }
+
+    public void setAuthRateLimitWindowSeconds(int authRateLimitWindowSeconds) {
+        this.authRateLimitWindowSeconds = authRateLimitWindowSeconds;
+    }
+
+    public int getAuthLoginMaxAttempts() {
+        return authLoginMaxAttempts;
+    }
+
+    public void setAuthLoginMaxAttempts(int authLoginMaxAttempts) {
+        this.authLoginMaxAttempts = authLoginMaxAttempts;
+    }
+
+    public int getAuthSignupMaxAttempts() {
+        return authSignupMaxAttempts;
+    }
+
+    public void setAuthSignupMaxAttempts(int authSignupMaxAttempts) {
+        this.authSignupMaxAttempts = authSignupMaxAttempts;
     }
 }

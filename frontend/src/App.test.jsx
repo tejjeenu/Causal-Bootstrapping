@@ -1,5 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
+import { axe } from 'vitest-axe'
 import App from './App'
 
 const defaultRules = [
@@ -72,6 +74,129 @@ test('auth mode switch card toggles modern sign-up/sign-in copy', async () => {
   fireEvent.click(screen.getByRole('button', { name: /Create account/i }))
   expect(await screen.findByText('Already have an account?')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Sign in instead/i })).toBeInTheDocument()
+})
+
+test('app has no obvious accessibility violations in the auth panel', async () => {
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+  })
+
+  const { container } = render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: 'Sign In / Sign Up' }))
+  await screen.findByText('New to the app?')
+
+  const results = await axe(container)
+  expect(results.violations).toHaveLength(0)
+})
+
+test('signup requires matching confirmation and shows password guidance', async () => {
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+  })
+
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sign In / Sign Up' }))
+  fireEvent.click(await screen.findByRole('button', { name: /Create account/i }))
+
+  expect(await screen.findByText(/Use at least 12 characters/i)).toBeInTheDocument()
+  expect(screen.getByTestId('password-strength-fill')).toHaveStyle({ width: '0%' })
+  expect(screen.getByTestId('password-confirm-status')).toHaveTextContent('Re-enter the password to confirm it.')
+
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@example.com' } })
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Long enough passphrase1!' } })
+  expect(screen.getByTestId('password-strength-fill')).toHaveStyle({ width: '100%' })
+  fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'Different passphrase1!' } })
+  expect(screen.getByTestId('password-confirm-status')).toHaveTextContent('Passwords do not match yet.')
+  fireEvent.submit(screen.getByRole('button', { name: 'Create account' }).closest('form'))
+
+  expect(await screen.findByText('Passwords do not match.')).toBeInTheDocument()
+})
+
+test('signup shows matching confirmation state when passwords match', async () => {
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+  })
+
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sign In / Sign Up' }))
+  fireEvent.click(await screen.findByRole('button', { name: /Create account/i }))
+
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Long enough passphrase1!' } })
+  fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'Long enough passphrase1!' } })
+
+  expect(await screen.findByTestId('password-confirm-status')).toHaveTextContent('Passwords match.')
+  expect(screen.getByLabelText('Confirm Password')).toHaveAttribute('aria-invalid', 'false')
+})
+
+test('custom select supports keyboard interaction', async () => {
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+  })
+
+  const user = userEvent.setup()
+  render(<App />)
+
+  const chestPainSelect = screen.getByRole('button', { name: 'Chest Pain Type' })
+  chestPainSelect.focus()
+  await user.keyboard('{ArrowDown}')
+  await user.keyboard('{ArrowDown}{Enter}')
+
+  expect(screen.getByRole('button', { name: 'Chest Pain Type' })).toHaveTextContent('Atypical Angina')
+})
+
+test('forgot password flow posts reset request and returns to login', async () => {
+  let resetRequestBody = null
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+    'POST /crud-api/auth/password-reset/request': ({ options }) => {
+      resetRequestBody = JSON.parse(options.body)
+      return jsonResponse({ message: 'If the email exists, a reset link has been sent.' })
+    },
+  })
+
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sign In / Sign Up' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }))
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'user@example.com' } })
+  fireEvent.submit(screen.getByRole('button', { name: 'Send reset link' }).closest('form'))
+
+  await waitFor(() => expect(resetRequestBody).toEqual({ email: 'user@example.com' }))
+  expect(await screen.findByText('If the email exists, a reset link has been sent.')).toBeInTheDocument()
+  expect(screen.getByText('New to the app?')).toBeInTheDocument()
+})
+
+test('recovery link flow updates password and authenticates the user', async () => {
+  const previousPath = window.location.pathname + window.location.search
+  window.history.replaceState({}, '', '/#type=recovery&access_token=recovery-token&expires_in=900')
+
+  let confirmRequestBody = null
+  globalThis.fetch = createFetchMock({
+    'GET /crud-api/auth/me': { body: { authenticated: false, user: null } },
+    'POST /crud-api/auth/password-reset/confirm': ({ options }) => {
+      confirmRequestBody = JSON.parse(options.body)
+      return jsonResponse({ authenticated: true, user: { id: 'u1', email: 'u@example.com' } })
+    },
+    'GET /crud-api/risk-settings': { body: { rules: defaultRules } },
+    'GET /crud-api/results': { body: { results: [] } },
+  })
+
+  render(<App />)
+
+  fireEvent.change(await screen.findByLabelText('New Password'), { target: { value: 'Long enough passphrase1!' } })
+  fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'Long enough passphrase1!' } })
+  fireEvent.submit(screen.getByRole('button', { name: 'Update password' }).closest('form'))
+
+  await waitFor(() => expect(confirmRequestBody).toEqual({
+    accessToken: 'recovery-token',
+    expiresIn: 900,
+    password: 'Long enough passphrase1!',
+  }))
+  expect(await screen.findByText('Custom Risk Classification')).toBeInTheDocument()
+
+  window.history.replaceState({}, '', previousPath || '/')
 })
 
 test('predict flow renders result card', async () => {

@@ -14,3 +14,7 @@ app:
   auth-cookie-secure: ${AUTH_COOKIE_SECURE:false}
   auth-cookie-same-site: ${AUTH_COOKIE_SAMESITE:Lax}
   allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  signup-password-min-length: ${SIGNUP_PASSWORD_MIN_LENGTH:12}
+  auth-rate-limit-window-seconds: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:900}
+  auth-login-max-attempts: ${AUTH_LOGIN_MAX_ATTEMPTS:8}
+  auth-signup-max-attempts: ${AUTH_SIGNUP_MAX_ATTEMPTS:5}

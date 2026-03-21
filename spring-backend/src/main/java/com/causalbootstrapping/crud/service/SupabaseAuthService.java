@@ -49,6 +49,22 @@ public class SupabaseAuthService {
         supabaseClientService.authRequest("POST", "logout", supabaseClientService.objectNode(), accessToken);
     }
 
+    public void requestPasswordReset(String email, String redirectTo) {
+        ObjectNode payload = supabaseClientService.objectNode();
+        payload.put("email", email);
+        if (redirectTo != null && !redirectTo.isBlank()) {
+            payload.put("redirect_to", redirectTo);
+        }
+        supabaseClientService.authRequest("POST", "recover", payload, null);
+    }
+
+    public AuthUser updatePassword(String accessToken, String password) {
+        ObjectNode payload = supabaseClientService.objectNode();
+        payload.put("password", password);
+        JsonNode data = supabaseClientService.authRequest("PUT", "user", payload, accessToken);
+        return mapAuthUser(data);
+    }
+
     private AuthUser mapAuthUser(JsonNode data) {
         JsonNode userNode = data.path("user");
         if (!userNode.isObject()) {

@@ -220,6 +220,10 @@ In other words, the work is not only analytical; it is also translational, using
 Live web application:
 - https://cad-causal-risk-predictor.web.app/
 
+Short architecture summary:
+
+- [`docs/ARCHITECTURE_DECISIONS.md`](docs/ARCHITECTURE_DECISIONS.md) is the concise explanation of the major webapp design decisions and why they were made.
+
 The web app is intentionally split into small, technology-specific modules rather than one large full-stack service.
 
 Core modules:
@@ -283,6 +287,7 @@ Calibration reasoning:
 See:
 
 - [`WEBAPP_SETUP.md`](WEBAPP_SETUP.md)
+- [`docs/ARCHITECTURE_DECISIONS.md`](docs/ARCHITECTURE_DECISIONS.md)
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - [`docs/ML_API.md`](docs/ML_API.md)
 - [`docs/CRUD_API.md`](docs/CRUD_API.md)

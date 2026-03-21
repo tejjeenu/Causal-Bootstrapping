@@ -87,6 +87,8 @@ sequenceDiagram
   - `POST /auth/login`
   - `GET /auth/me`
   - `POST /auth/logout`
+  - `POST /auth/password-reset/request`
+  - `POST /auth/password-reset/confirm`
   - `GET /risk-settings`
   - `PUT /risk-settings`
   - `GET /results`
@@ -110,6 +112,10 @@ sequenceDiagram
 - `AUTH_COOKIE_NAME` (optional)
 - `AUTH_COOKIE_SECURE` (optional)
 - `AUTH_COOKIE_SAMESITE` (optional)
+- `SIGNUP_PASSWORD_MIN_LENGTH` (optional)
+- `AUTH_RATE_LIMIT_WINDOW_SECONDS` (optional)
+- `AUTH_LOGIN_MAX_ATTEMPTS` (optional)
+- `AUTH_SIGNUP_MAX_ATTEMPTS` (optional)
 - `CORS_ORIGINS`
 - `CRUD_API_PORT` (optional, default `8080`)
 

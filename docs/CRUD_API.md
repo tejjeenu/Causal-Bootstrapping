@@ -34,6 +34,10 @@ Optional:
 - `AUTH_COOKIE_NAME` (default `cb_auth_token`)
 - `AUTH_COOKIE_SECURE` (default `false`)
 - `AUTH_COOKIE_SAMESITE` (default `Lax`)
+- `SIGNUP_PASSWORD_MIN_LENGTH` (default `12`)
+- `AUTH_RATE_LIMIT_WINDOW_SECONDS` (default `900`)
+- `AUTH_LOGIN_MAX_ATTEMPTS` (default `8`)
+- `AUTH_SIGNUP_MAX_ATTEMPTS` (default `5`)
 - `CORS_ORIGINS`
 - `CRUD_API_PORT` (default `8080`)
 
@@ -43,12 +47,20 @@ Optional:
 - `POST /auth/login`
 - `GET /auth/me`
 - `POST /auth/logout`
+- `POST /auth/password-reset/request`
+- `POST /auth/password-reset/confirm`
 - `GET /risk-settings`
 - `PUT /risk-settings`
 - `GET /results`
 - `POST /results`
 - `PATCH /results/{resultId}`
 - `DELETE /results/{resultId}`
+
+Auth notes:
+
+- signup passwords must meet the stronger passphrase policy enforced by the backend
+- login and signup are rate limited in-memory by client IP and normalized email
+- non-local deployments must enable `AUTH_COOKIE_SECURE=true`
 
 `PUT /risk-settings` rule constraints:
 

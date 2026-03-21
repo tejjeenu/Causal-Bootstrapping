@@ -153,6 +153,66 @@
   font-size: 0.9rem;
 }
 
+.auth-inline-link {
+  justify-self: start;
+  margin-top: 0.15rem;
+  border: 0;
+  background: transparent;
+  color: var(--nhs-blue-dark);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.password-meter {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: -0.1rem;
+}
+
+.password-meter-track {
+  position: relative;
+  width: 100%;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce7f1;
+  box-shadow: inset 0 0 0 1px rgba(11, 88, 164, 0.08);
+}
+
+.password-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.28s ease, background-color 0.28s ease;
+}
+
+.password-meter-copy {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.84rem;
+}
+
+.password-confirm-status {
+  margin: -0.18rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.password-confirm-status.neutral {
+  color: var(--ink-muted);
+}
+
+.password-confirm-status.match {
+  color: var(--nhs-green);
+}
+
+.password-confirm-status.mismatch {
+  color: var(--danger);
+}
+
 .auth-inline-toggle {
   margin-top: 0.5rem;
   border: 1px solid #9ec5e6;

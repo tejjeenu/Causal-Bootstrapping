@@ -50,7 +50,9 @@ const DEFAULT_FORM = {
   thal: 'Reversible Defect',
 }
 
-const DEFAULT_AUTH_FORM = { email: '', password: '' }
+const SIGNUP_PASSWORD_MIN_LENGTH = 12
+const DEFAULT_AUTH_FORM = { email: '', password: '', confirmPassword: '' }
+const DEFAULT_PASSWORD_RECOVERY = { accessToken: '', expiresIn: 3600 }
 const DEFAULT_RULES = [
   { threshold: 0, label: 'Low Risk' },
   { threshold: 0.35, label: 'Medium Risk' },
@@ -101,9 +103,199 @@ const isCsvFile = (file) => {
   return fileName.endsWith('.csv') || fileType.includes('csv')
 }
 
-function CurvedSelect({ id, value, options, onChange }) {
+const getPasswordStrengthColor = (score, meetsPolicy) => {
+  if (score <= 0) return '#dce7f1'
+  if (!meetsPolicy || score <= 1) return '#d5281b'
+  if (score === 2) return '#f0a121'
+  if (score === 3) return '#d6a300'
+  if (score === 4) return '#1682c5'
+  return '#007f3b'
+}
+
+const allCharactersIdentical = (value) => {
+  if (!value) return false
+  return value.split('').every((character) => character === value[0])
+}
+
+const getPasswordStrength = (password, email = '') => {
+  const normalizedPassword = String(password ?? '')
+  const trimmedPassword = normalizedPassword.trim()
+  const normalizedEmail = String(email ?? '').trim().toLowerCase()
+  const emailLocalPart = normalizedEmail.includes('@') ? normalizedEmail.split('@', 1)[0] : ''
+  const containsEmailName = emailLocalPart.length >= 4 && trimmedPassword.toLowerCase().includes(emailLocalPart)
+  const hasLetter = /[a-z]/i.test(trimmedPassword)
+  const hasLower = /[a-z]/.test(trimmedPassword)
+  const hasUpper = /[A-Z]/.test(trimmedPassword)
+  const hasDigit = /\d/.test(trimmedPassword)
+  const hasSymbol = /[^A-Za-z0-9\s]/.test(trimmedPassword)
+  const uniqueChars = new Set(trimmedPassword.toLowerCase()).size
+  const repeatedCharacter = allCharactersIdentical(trimmedPassword)
+
+  let score = 0
+  if (trimmedPassword.length >= SIGNUP_PASSWORD_MIN_LENGTH) score += 2
+  else if (trimmedPassword.length >= 8) score += 1
+  if (hasLower && hasUpper) score += 1
+  if (hasDigit) score += 1
+  if (hasSymbol) score += 1
+  if (uniqueChars >= 8) score += 1
+  if (containsEmailName) score -= 2
+  if (repeatedCharacter) score -= 2
+  if (!hasLetter) score -= 1
+
+  const normalizedScore = Math.max(0, Math.min(score, 5))
+  const meetsPolicy =
+    trimmedPassword.length >= SIGNUP_PASSWORD_MIN_LENGTH
+    && hasLetter
+    && hasDigit
+    && hasSymbol
+    && !repeatedCharacter
+    && !containsEmailName
+
+  if (!trimmedPassword) {
+    return {
+      score: 0,
+      label: 'Add a password',
+      detail: `Use at least ${SIGNUP_PASSWORD_MIN_LENGTH} characters with a letter, number, and symbol.`,
+      meetsPolicy: false,
+    }
+  }
+
+  if (!meetsPolicy) {
+    if (trimmedPassword.length < SIGNUP_PASSWORD_MIN_LENGTH) {
+      return {
+        score: normalizedScore,
+        label: 'Too short',
+        detail: `Use at least ${SIGNUP_PASSWORD_MIN_LENGTH} characters with a letter, number, and symbol.`,
+        meetsPolicy: false,
+      }
+    }
+    if (!hasLetter) {
+      return {
+        score: normalizedScore,
+        label: 'Too weak',
+        detail: 'Include at least one letter.',
+        meetsPolicy: false,
+      }
+    }
+    if (!hasDigit) {
+      return {
+        score: normalizedScore,
+        label: 'Too weak',
+        detail: 'Include at least one digit.',
+        meetsPolicy: false,
+      }
+    }
+    if (!hasSymbol) {
+      return {
+        score: normalizedScore,
+        label: 'Too weak',
+        detail: 'Include at least one symbol.',
+        meetsPolicy: false,
+      }
+    }
+    if (repeatedCharacter) {
+      return {
+        score: normalizedScore,
+        label: 'Too weak',
+        detail: 'Avoid repeating the same character.',
+        meetsPolicy: false,
+      }
+    }
+    return {
+      score: normalizedScore,
+      label: 'Too weak',
+      detail: 'Avoid using the email name in the password.',
+      meetsPolicy: false,
+    }
+  }
+
+  if (normalizedScore >= 5) {
+    return {
+      score: normalizedScore,
+      label: 'Strong',
+      detail: 'Good password. Keep it unique to this app.',
+      meetsPolicy: true,
+    }
+  }
+  if (normalizedScore >= 3) {
+    return {
+      score: normalizedScore,
+      label: 'Good',
+      detail: 'Solid baseline. More length makes it stronger.',
+      meetsPolicy: true,
+    }
+  }
+  return {
+    score: normalizedScore,
+    label: 'Fair',
+    detail: 'Valid, but longer passphrases are better.',
+    meetsPolicy: true,
+  }
+}
+
+const getFocusableElements = (container) => {
+  if (!container) return []
+  return Array.from(
+    container.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  )
+}
+
+function useDialogAccessibility(open, containerRef, onClose) {
+  useEffect(() => {
+    if (!open) return undefined
+
+    const previousActiveElement = document.activeElement
+    const focusables = getFocusableElements(containerRef.current)
+    const firstFocusable = focusables[0]
+    const lastFocusable = focusables[focusables.length - 1]
+    if (firstFocusable instanceof HTMLElement) {
+      firstFocusable.focus()
+    } else if (containerRef.current instanceof HTMLElement) {
+      containerRef.current.focus()
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab' || focusables.length === 0) {
+        return
+      }
+
+      if (event.shiftKey && document.activeElement === firstFocusable) {
+        event.preventDefault()
+        lastFocusable.focus()
+      } else if (!event.shiftKey && document.activeElement === lastFocusable) {
+        event.preventDefault()
+        firstFocusable.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      if (previousActiveElement instanceof HTMLElement) {
+        previousActiveElement.focus()
+      }
+    }
+  }, [containerRef, onClose, open])
+}
+
+function CurvedSelect({ id, label, value, options, onChange }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
+  const triggerRef = useRef(null)
+  const optionRefs = useRef([])
+  const selectedIndex = Math.max(0, options.indexOf(value))
+  const [activeIndex, setActiveIndex] = useState(selectedIndex)
+
+  useEffect(() => {
+    setActiveIndex(selectedIndex)
+  }, [selectedIndex])
 
   useEffect(() => {
     if (!open) return undefined
@@ -127,16 +319,91 @@ function CurvedSelect({ id, value, options, onChange }) {
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open) return undefined
+
+    const optionToFocus = optionRefs.current[activeIndex] ?? optionRefs.current[selectedIndex]
+    if (optionToFocus instanceof HTMLElement) {
+      optionToFocus.focus()
+    }
+  }, [activeIndex, open, selectedIndex])
+
+  const closeMenu = (restoreFocus = true) => {
+    setOpen(false)
+    if (restoreFocus) {
+      requestAnimationFrame(() => triggerRef.current?.focus())
+    }
+  }
+
+  const selectOption = (option) => {
+    onChange(option)
+    closeMenu()
+  }
+
+  const focusOptionAt = (index) => {
+    const boundedIndex = Math.max(0, Math.min(options.length - 1, index))
+    setActiveIndex(boundedIndex)
+    optionRefs.current[boundedIndex]?.focus()
+  }
+
+  const handleTriggerKeyDown = (event) => {
+    if (!['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
+      return
+    }
+    event.preventDefault()
+    if (event.key === 'ArrowUp') {
+      setActiveIndex(selectedIndex)
+    } else {
+      setActiveIndex(selectedIndex)
+    }
+    setOpen(true)
+  }
+
+  const handleOptionKeyDown = (event, index, option) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      focusOptionAt(index + 1)
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      focusOptionAt(index - 1)
+      return
+    }
+    if (event.key === 'Home') {
+      event.preventDefault()
+      focusOptionAt(0)
+      return
+    }
+    if (event.key === 'End') {
+      event.preventDefault()
+      focusOptionAt(options.length - 1)
+      return
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeMenu()
+      return
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      selectOption(option)
+    }
+  }
+
   return (
     <div className={`curved-select${open ? ' open' : ''}`} ref={rootRef}>
       <button
         id={id}
+        ref={triggerRef}
         type="button"
         className={`curved-select-trigger${open ? ' open' : ''}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={`${id}-listbox`}
+        aria-label={label}
         onClick={() => setOpen((previous) => !previous)}
+        onKeyDown={handleTriggerKeyDown}
       >
         <span>{value}</span>
         <span aria-hidden="true" className="curved-select-chevron">
@@ -147,17 +414,21 @@ function CurvedSelect({ id, value, options, onChange }) {
       </button>
       {open && (
         <ul id={`${id}-listbox`} role="listbox" className="curved-select-menu">
-          {options.map((option) => (
-            <li key={option}>
+          {options.map((option, index) => (
+            <li key={option} role="presentation">
               <button
                 type="button"
+                id={`${id}-option-${index}`}
                 role="option"
                 aria-selected={option === value}
-                className={`curved-select-option${option === value ? ' selected' : ''}`}
-                onClick={() => {
-                  onChange(option)
-                  setOpen(false)
+                ref={(element) => {
+                  optionRefs.current[index] = element
                 }}
+                tabIndex={activeIndex === index ? 0 : -1}
+                className={`curved-select-option${option === value ? ' selected' : ''}`}
+                onClick={() => selectOption(option)}
+                onFocus={() => setActiveIndex(index)}
+                onKeyDown={(event) => handleOptionKeyDown(event, index, option)}
               >
                 {option}
               </button>
@@ -174,6 +445,7 @@ function App() {
   const [authPanelOpen, setAuthPanelOpen] = useState(false)
   const [authMode, setAuthMode] = useState('login')
   const [authForm, setAuthForm] = useState(DEFAULT_AUTH_FORM)
+  const [passwordRecovery, setPasswordRecovery] = useState(DEFAULT_PASSWORD_RECOVERY)
   const [authUser, setAuthUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState('')
@@ -221,6 +493,38 @@ function App() {
   const [batchSaveError, setBatchSaveError] = useState('')
   const [batchSaveMessage, setBatchSaveMessage] = useState('')
   const [batchFileInputKey, setBatchFileInputKey] = useState(0)
+  const confirmDialogRef = useRef(null)
+  const saveSuccessDialogRef = useRef(null)
+  const isSignupMode = authMode === 'signup'
+  const isResetRequestMode = authMode === 'reset-request'
+  const isResetConfirmMode = authMode === 'reset-confirm'
+  const showPasswordPolicy = isSignupMode || isResetConfirmMode
+  const passwordStrength = useMemo(
+    () => getPasswordStrength(authForm.password, authForm.email),
+    [authForm.email, authForm.password],
+  )
+  const passwordStrengthPercent = useMemo(
+    () => Math.max(0, Math.min(100, (passwordStrength.score / 5) * 100)),
+    [passwordStrength.score],
+  )
+  const passwordStrengthColor = useMemo(
+    () => getPasswordStrengthColor(passwordStrength.score, passwordStrength.meetsPolicy),
+    [passwordStrength.meetsPolicy, passwordStrength.score],
+  )
+  const confirmPasswordState = useMemo(() => {
+    if (!(isSignupMode || isResetConfirmMode)) {
+      return { text: '', tone: 'neutral', matches: false, visible: false }
+    }
+    if (!authForm.confirmPassword) {
+      return { text: 'Re-enter the password to confirm it.', tone: 'neutral', matches: false, visible: true }
+    }
+    if (authForm.password === authForm.confirmPassword) {
+      return { text: 'Passwords match.', tone: 'match', matches: true, visible: true }
+    }
+    return { text: 'Passwords do not match yet.', tone: 'mismatch', matches: false, visible: true }
+  }, [authForm.confirmPassword, authForm.password, isResetConfirmMode, isSignupMode])
+  useDialogAccessibility(confirmDialog.open, confirmDialogRef, () => setConfirmDialog(DEFAULT_CONFIRM_DIALOG))
+  useDialogAccessibility(saveSuccessDialogOpen, saveSuccessDialogRef, () => setSaveSuccessDialogOpen(false))
 
   const confidenceRange = useMemo(() => {
     if (!result?.confidence_interval_95) return null
@@ -273,6 +577,19 @@ function App() {
   const mlApiFetch = createApiFetch(ML_API_BASE)
   const crudApiFetch = createApiFetch(CRUD_API_BASE)
 
+  const updateAuthMode = (nextMode, preserveEmail = true) => {
+    setAuthMode(nextMode)
+    setAuthError('')
+    setAuthMessage('')
+    setAuthForm((previous) => ({
+      ...DEFAULT_AUTH_FORM,
+      email: preserveEmail ? previous.email : '',
+    }))
+    if (nextMode !== 'reset-confirm') {
+      setPasswordRecovery(DEFAULT_PASSWORD_RECOVERY)
+    }
+  }
+
   const hasZeroThreshold = (rules) =>
     Array.isArray(rules) && rules.some((rule) => Math.abs(Number(rule?.threshold)) <= ZERO_THRESHOLD_TOLERANCE)
 
@@ -318,6 +635,33 @@ function App() {
         typeof DEFAULT_FORM[key] === 'number' ? Number(value) : value,
       ]),
     )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
+    if (!hash) return
+
+    const params = new URLSearchParams(hash)
+    if (params.get('type') !== 'recovery') return
+
+    const accessToken = params.get('access_token')
+    const expiresIn = Number(params.get('expires_in'))
+    if (!accessToken) return
+
+    setPasswordRecovery({
+      accessToken,
+      expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : DEFAULT_PASSWORD_RECOVERY.expiresIn,
+    })
+    setAuthPanelOpen(true)
+    setAuthMode('reset-confirm')
+    setAuthMessage('Choose a new password for your account.')
+    setAuthError('')
+    setAuthForm((previous) => ({ ...DEFAULT_AUTH_FORM, email: previous.email }))
+
+    const cleanUrl = `${window.location.pathname}${window.location.search}`
+    window.history.replaceState({}, document.title, cleanUrl)
+  }, [])
 
   const loadSavedResults = async () => {
     if (!authUser) {
@@ -410,21 +754,53 @@ function App() {
     event.preventDefault()
     setAuthError('')
     setAuthMessage('')
+
+    if ((isSignupMode || isResetConfirmMode) && authForm.password !== authForm.confirmPassword) {
+      setAuthError('Passwords do not match.')
+      return
+    }
+    if ((isSignupMode || isResetConfirmMode) && !passwordStrength.meetsPolicy) {
+      setAuthError(passwordStrength.detail)
+      return
+    }
+
     setAuthLoading(true)
     try {
-      const endpoint = authMode === 'login' ? '/auth/login' : '/auth/signup'
-      const response = await crudApiFetch(endpoint, { method: 'POST', body: JSON.stringify(authForm) })
-      const body = await response.json()
+      let endpoint = '/auth/login'
+      let requestBody = { email: authForm.email, password: authForm.password }
+
+      if (isSignupMode) {
+        endpoint = '/auth/signup'
+      } else if (isResetRequestMode) {
+        endpoint = '/auth/password-reset/request'
+        requestBody = { email: authForm.email }
+      } else if (isResetConfirmMode) {
+        endpoint = '/auth/password-reset/confirm'
+        requestBody = {
+          accessToken: passwordRecovery.accessToken,
+          expiresIn: passwordRecovery.expiresIn,
+          password: authForm.password,
+        }
+      }
+
+      const response = await crudApiFetch(endpoint, { method: 'POST', body: JSON.stringify(requestBody) })
+      const responseBody = await response.json()
       if (!response.ok) {
-        setAuthError(body?.detail || 'Authentication failed.')
+        setAuthError(responseBody?.detail || 'Authentication failed.')
         return
       }
-      if (body?.authenticated && body?.user) {
-        setAuthUser(body.user)
+      if (isResetRequestMode) {
+        updateAuthMode('login')
+        setAuthMessage(responseBody?.message || 'If the email exists, a reset link has been sent.')
+        return
+      }
+      if (responseBody?.authenticated && responseBody?.user) {
+        setAuthUser(responseBody.user)
         setAuthForm(DEFAULT_AUTH_FORM)
         setAuthPanelOpen(false)
+        setPasswordRecovery(DEFAULT_PASSWORD_RECOVERY)
       } else {
-        setAuthMode('login')
+        updateAuthMode('login')
         setAuthMessage('Account created. Confirm your email, then sign in.')
       }
     } catch {
@@ -441,6 +817,7 @@ function App() {
       setAuthPanelOpen(false)
       setAuthMode('login')
       setAuthForm(DEFAULT_AUTH_FORM)
+      setPasswordRecovery(DEFAULT_PASSWORD_RECOVERY)
       setAuthUser(null)
       setFormState(DEFAULT_FORM)
       setResult(null)
@@ -1236,52 +1613,129 @@ function App() {
 
       {!authUser && authPanelOpen && (
         <section className="panel auth-inline-panel reveal delay-1" aria-live="polite">
-          <h2>{authMode === 'login' ? 'Sign in to save results' : 'Create account to save results'}</h2>
+          <h2>
+            {authMode === 'login' && 'Sign in to save results'}
+            {authMode === 'signup' && 'Create account to save results'}
+            {authMode === 'reset-request' && 'Reset your password'}
+            {authMode === 'reset-confirm' && 'Choose a new password'}
+          </h2>
           <form className="auth-inline-form" onSubmit={handleAuthSubmit}>
-            <label className="field">
-              <span>Email</span>
-              <input
-                type="email"
-                value={authForm.email}
-                onChange={(event) => setAuthForm((prev) => ({ ...prev, email: event.target.value }))}
-                autoComplete="email"
-                required
-              />
-            </label>
-            <label className="field">
-              <span>Password</span>
-              <input
-                type="password"
-                value={authForm.password}
-                onChange={(event) => setAuthForm((prev) => ({ ...prev, password: event.target.value }))}
-                autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
-                minLength={6}
-                required
-              />
-            </label>
+            {!isResetConfirmMode && (
+              <label className="field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={authForm.email}
+                  onChange={(event) => setAuthForm((prev) => ({ ...prev, email: event.target.value }))}
+                  autoComplete="email"
+                  required
+                />
+              </label>
+            )}
+            {!isResetRequestMode && (
+              <label className="field">
+                <span>{isResetConfirmMode ? 'New Password' : 'Password'}</span>
+                <input
+                  type="password"
+                  value={authForm.password}
+                  onChange={(event) => setAuthForm((prev) => ({ ...prev, password: event.target.value }))}
+                  autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                  minLength={showPasswordPolicy ? SIGNUP_PASSWORD_MIN_LENGTH : 6}
+                  aria-invalid={showPasswordPolicy && authForm.password ? !passwordStrength.meetsPolicy : undefined}
+                  aria-describedby={showPasswordPolicy ? 'password-strength-copy' : undefined}
+                  required
+                />
+              </label>
+            )}
+            {(isSignupMode || isResetConfirmMode) && (
+              <>
+                <label className="field">
+                  <span>Confirm Password</span>
+                  <input
+                    type="password"
+                    value={authForm.confirmPassword}
+                    onChange={(event) => setAuthForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                    autoComplete="new-password"
+                    minLength={SIGNUP_PASSWORD_MIN_LENGTH}
+                    aria-invalid={authForm.confirmPassword ? !confirmPasswordState.matches : undefined}
+                    aria-describedby="confirm-password-status"
+                    required
+                  />
+                </label>
+                {confirmPasswordState.visible && (
+                  <p
+                    id="confirm-password-status"
+                    data-testid="password-confirm-status"
+                    className={`password-confirm-status ${confirmPasswordState.tone}`}
+                    aria-live="polite"
+                  >
+                    {confirmPasswordState.text}
+                  </p>
+                )}
+                <div className="password-meter" aria-live="polite">
+                  <div className="password-meter-track" aria-hidden="true">
+                    <span
+                      data-testid="password-strength-fill"
+                      className="password-meter-fill"
+                      style={{
+                        width: `${passwordStrengthPercent}%`,
+                        backgroundColor: passwordStrengthColor,
+                      }}
+                    />
+                  </div>
+                  <p id="password-strength-copy" className="password-meter-copy">
+                    <strong>{passwordStrength.label}</strong> {passwordStrength.detail}
+                  </p>
+                </div>
+              </>
+            )}
             <button type="submit" disabled={authLoading}>
-              {authLoading ? 'Please wait...' : authMode === 'login' ? 'Sign in' : 'Create account'}
+              {authLoading && 'Please wait...'}
+              {!authLoading && authMode === 'login' && 'Sign in'}
+              {!authLoading && authMode === 'signup' && 'Create account'}
+              {!authLoading && authMode === 'reset-request' && 'Send reset link'}
+              {!authLoading && authMode === 'reset-confirm' && 'Update password'}
             </button>
           </form>
           {authError && <p className="error" role="alert">{authError}</p>}
           {authMessage && <p className="auth-message-inline">{authMessage}</p>}
-          <div className="auth-switch-card">
-            <p className="auth-switch-caption">
-              {authMode === 'login' ? 'New to the app?' : 'Already have an account?'}
-            </p>
+          {authMode === 'login' && (
             <button
               type="button"
-              className="auth-inline-toggle"
-              onClick={() => setAuthMode((prev) => (prev === 'login' ? 'signup' : 'login'))}
+              className="auth-inline-link"
+              onClick={() => updateAuthMode('reset-request')}
             >
-              <span>{authMode === 'login' ? 'Create account' : 'Sign in instead'}</span>
-              <span aria-hidden="true" className="auth-toggle-icon">
-                <svg viewBox="0 0 20 20" focusable="false" aria-hidden="true">
-                  <path d="M7 5.5L11.5 10L7 14.5" />
-                </svg>
-              </span>
+              Forgot password?
             </button>
-          </div>
+          )}
+          {(authMode === 'login' || authMode === 'signup') && (
+            <div className="auth-switch-card">
+              <p className="auth-switch-caption">
+                {authMode === 'login' ? 'New to the app?' : 'Already have an account?'}
+              </p>
+              <button
+                type="button"
+                className="auth-inline-toggle"
+                onClick={() => updateAuthMode(authMode === 'login' ? 'signup' : 'login')}
+              >
+                <span>{authMode === 'login' ? 'Create account' : 'Sign in instead'}</span>
+                <span aria-hidden="true" className="auth-toggle-icon">
+                  <svg viewBox="0 0 20 20" focusable="false" aria-hidden="true">
+                    <path d="M7 5.5L11.5 10L7 14.5" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+          )}
+          {(authMode === 'reset-request' || authMode === 'reset-confirm') && (
+            <button
+              type="button"
+              className="auth-inline-link"
+              onClick={() => updateAuthMode('login', authMode === 'reset-request')}
+            >
+              Back to sign in
+            </button>
+          )}
         </section>
       )}
 
@@ -1357,6 +1811,7 @@ function App() {
                   <span>{field.label}</span>
                   <CurvedSelect
                     id={`input-${field.key}`}
+                    label={field.label}
                     value={formState[field.key]}
                     options={field.options}
                     onChange={(value) => setFormState((prev) => ({ ...prev, [field.key]: value }))}
@@ -1749,9 +2204,17 @@ function App() {
 
       {confirmDialog.open && (
         <div className="action-confirm-backdrop" role="presentation">
-          <section className="action-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+          <section
+            ref={confirmDialogRef}
+            className="action-confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
+            aria-describedby="confirm-dialog-description"
+            tabIndex={-1}
+          >
             <h2 id="confirm-dialog-title">{confirmDialog.title}</h2>
-            <p>{confirmDialog.message}</p>
+            <p id="confirm-dialog-description">{confirmDialog.message}</p>
             <div className="action-confirm-actions">
               <button type="button" className="cancel-confirm-button" onClick={closeConfirmDialog}>
                 Cancel
@@ -1767,13 +2230,16 @@ function App() {
       {saveSuccessDialogOpen && (
         <div className="save-success-backdrop" role="presentation">
           <section
+            ref={saveSuccessDialogRef}
             className="save-success-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="save-success-title"
+            aria-describedby="save-success-description"
+            tabIndex={-1}
           >
             <h2 id="save-success-title">Prediction Saved</h2>
-            <p>Your prediction result was saved successfully.</p>
+            <p id="save-success-description">Your prediction result was saved successfully.</p>
             <div className="save-success-actions">
               <button type="button" onClick={() => setSaveSuccessDialogOpen(false)}>
                 Keep Result View
