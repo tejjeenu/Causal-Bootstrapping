@@ -95,6 +95,21 @@ const BATCH_TEMPLATE_EXAMPLE_ROW = [
   'Flat',
   'Reversible Defect',
 ]
+const SAVED_INPUT_COLUMNS = [
+  { key: 'age', label: 'Age' },
+  { key: 'trestbps', label: 'Resting BP' },
+  { key: 'chol', label: 'Cholesterol' },
+  { key: 'thalach', label: 'Max HR' },
+  { key: 'oldpeak', label: 'Oldpeak' },
+  { key: 'ca', label: 'Vessels (CA)' },
+  { key: 'sex', label: 'Sex' },
+  { key: 'cp', label: 'Chest Pain' },
+  { key: 'fbs', label: 'Fasting Blood Sugar' },
+  { key: 'restecg', label: 'Resting ECG' },
+  { key: 'exang', label: 'Exercise Angina' },
+  { key: 'slope', label: 'ST Slope' },
+  { key: 'thal', label: 'Thallium Test' },
+]
 
 const isCsvFile = (file) => {
   if (!file) return false
@@ -1367,14 +1382,7 @@ function App() {
       'created_at',
       'patient_first_name',
       'patient_last_name',
-      'age',
-      'sex',
-      'cp',
-      'trestbps',
-      'chol',
-      'thalach',
-      'oldpeak',
-      'ca',
+      ...SAVED_INPUT_COLUMNS.map((column) => column.key),
       'risk_probability',
       'risk_percent',
       'risk_label',
@@ -1387,14 +1395,7 @@ function App() {
         entry?.created_at ?? '',
         entry?.patient_first_name ?? '',
         entry?.patient_last_name ?? '',
-        clinical.age ?? '',
-        clinical.sex ?? '',
-        clinical.cp ?? '',
-        clinical.trestbps ?? '',
-        clinical.chol ?? '',
-        clinical.thalach ?? '',
-        clinical.oldpeak ?? '',
-        clinical.ca ?? '',
+        ...SAVED_INPUT_COLUMNS.map((column) => clinical[column.key] ?? ''),
         entry?.risk_probability ?? '',
         entry?.risk_percent ?? '',
         normalizeRiskLabel(entry?.risk_label),
@@ -2081,21 +2082,15 @@ function App() {
                     </caption>
                     <thead>
                       <tr>
+                        <th scope="col">Actions</th>
                         <th scope="col">Classification</th>
-                        <th scope="col">Date</th>
+                        <th scope="col">Risk Probability</th>
+                        <th scope="col">Risk %</th>
                         <th scope="col">Patient First Name</th>
                         <th scope="col">Patient Last Name</th>
-                        <th scope="col">Age</th>
-                        <th scope="col">Sex</th>
-                        <th scope="col">Chest Pain</th>
-                        <th scope="col">Resting BP</th>
-                        <th scope="col">Cholesterol</th>
-                        <th scope="col">Max HR</th>
-                        <th scope="col">Oldpeak</th>
-                        <th scope="col">Vessels (CA)</th>
-                        <th scope="col">Risk %</th>
-                        <th scope="col">Risk Probability</th>
-                        <th scope="col">Actions</th>
+                        {SAVED_INPUT_COLUMNS.map((column) => (
+                          <th key={column.key} scope="col">{column.label}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -2105,50 +2100,6 @@ function App() {
                         const rowUpdating = nameUpdateLoadingId === entry.id
                         return (
                           <tr key={entry.id}>
-                            <td>
-                              <span className={`saved-risk-chip ${getRiskToneClass(riskLabel, riskRules)}`}>{riskLabel}</span>
-                            </td>
-                            <td>{formatSavedDate(entry.created_at)}</td>
-                            <td>
-                              {rowIsEditing ? (
-                                <input
-                                  type="text"
-                                  maxLength={80}
-                                  value={editIdentity.firstName}
-                                  onChange={(event) => setEditIdentity((prev) => ({ ...prev, firstName: event.target.value }))}
-                                  className="inline-name-input"
-                                  aria-label="Edit patient first name"
-                                  disabled={rowUpdating}
-                                />
-                              ) : (
-                                entry?.patient_first_name || '-'
-                              )}
-                            </td>
-                            <td>
-                              {rowIsEditing ? (
-                                <input
-                                  type="text"
-                                  maxLength={80}
-                                  value={editIdentity.lastName}
-                                  onChange={(event) => setEditIdentity((prev) => ({ ...prev, lastName: event.target.value }))}
-                                  className="inline-name-input"
-                                  aria-label="Edit patient last name"
-                                  disabled={rowUpdating}
-                                />
-                              ) : (
-                                entry?.patient_last_name || '-'
-                              )}
-                            </td>
-                            <td>{getClinicalInputValue(entry, 'age')}</td>
-                            <td>{getClinicalInputValue(entry, 'sex')}</td>
-                            <td>{getClinicalInputValue(entry, 'cp')}</td>
-                            <td>{getClinicalInputValue(entry, 'trestbps')}</td>
-                            <td>{getClinicalInputValue(entry, 'chol')}</td>
-                            <td>{getClinicalInputValue(entry, 'thalach')}</td>
-                            <td>{getClinicalInputValue(entry, 'oldpeak')}</td>
-                            <td>{getClinicalInputValue(entry, 'ca')}</td>
-                            <td>{formatMetric(entry.risk_percent)}%</td>
-                            <td>{formatMetric(entry.risk_probability, 4)}</td>
                             <td className="saved-actions-cell">
                               {rowIsEditing ? (
                                 <div className="saved-actions-group">
@@ -2190,6 +2141,44 @@ function App() {
                                 </div>
                               )}
                             </td>
+                            <td>
+                              <span className={`saved-risk-chip ${getRiskToneClass(riskLabel, riskRules)}`}>{riskLabel}</span>
+                            </td>
+                            <td>{formatMetric(entry.risk_probability, 4)}</td>
+                            <td>{formatMetric(entry.risk_percent)}%</td>
+                            <td>
+                              {rowIsEditing ? (
+                                <input
+                                  type="text"
+                                  maxLength={80}
+                                  value={editIdentity.firstName}
+                                  onChange={(event) => setEditIdentity((prev) => ({ ...prev, firstName: event.target.value }))}
+                                  className="inline-name-input"
+                                  aria-label="Edit patient first name"
+                                  disabled={rowUpdating}
+                                />
+                              ) : (
+                                entry?.patient_first_name || '-'
+                              )}
+                            </td>
+                            <td>
+                              {rowIsEditing ? (
+                                <input
+                                  type="text"
+                                  maxLength={80}
+                                  value={editIdentity.lastName}
+                                  onChange={(event) => setEditIdentity((prev) => ({ ...prev, lastName: event.target.value }))}
+                                  className="inline-name-input"
+                                  aria-label="Edit patient last name"
+                                  disabled={rowUpdating}
+                                />
+                              ) : (
+                                entry?.patient_last_name || '-'
+                              )}
+                            </td>
+                            {SAVED_INPUT_COLUMNS.map((column) => (
+                              <td key={column.key}>{getClinicalInputValue(entry, column.key)}</td>
+                            ))}
                           </tr>
                         )
                       })}

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { axe } from 'vitest-axe'
@@ -344,7 +344,21 @@ test('authenticated users can see saved patient names in history table', async (
             created_at: '2026-02-24T12:00:00Z',
             patient_first_name: 'Ada',
             patient_last_name: 'Lovelace',
-            clinical_inputs: { age: 58, sex: 'Male', cp: 'Asymptomatic', trestbps: 132, chol: 224, thalach: 173, oldpeak: 3.2, ca: 2 },
+            clinical_inputs: {
+              age: 58,
+              trestbps: 132,
+              chol: 224,
+              thalach: 173,
+              oldpeak: 3.2,
+              ca: 2,
+              sex: 'Male',
+              cp: 'Asymptomatic',
+              fbs: '<=120',
+              restecg: 'Normal ECG',
+              exang: 'Yes Ex Angina',
+              slope: 'Flat',
+              thal: 'Reversible Defect',
+            },
             risk_probability: 0.72,
             risk_percent: 72,
             risk_label: 'High Risk',
@@ -363,6 +377,10 @@ test('authenticated users can see saved patient names in history table', async (
     expect(screen.getByText('Ada')).toBeInTheDocument()
     expect(screen.getByText('Lovelace')).toBeInTheDocument()
   })
+
+  const savedResultsTable = screen.getByRole('table', { name: /saved prediction results with clinical inputs/i })
+  expect(within(savedResultsTable).getByText('Normal ECG')).toBeInTheDocument()
+  expect(within(savedResultsTable).getByText('Reversible Defect')).toBeInTheDocument()
 })
 
 test('logout resets form, result, and batch state to defaults', async () => {

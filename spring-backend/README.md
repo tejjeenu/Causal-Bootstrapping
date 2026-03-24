@@ -39,6 +39,51 @@ Optional:
 - `CORS_ORIGINS`
 - `CRUD_API_PORT`
 
+## Database Schema Diagram
+
+This diagram summarizes the Postgres tables used by the CRUD service. `auth.users` is Supabase-managed; the app-owned tables both reference it through `user_id`.
+
+```mermaid
+erDiagram
+    AUTH_USERS ||--o{ PREDICTION_RESULTS : owns
+    AUTH_USERS ||--o{ RISK_CLASSIFICATION_SETTINGS : owns
+
+    AUTH_USERS {
+        uuid id PK
+    }
+
+    PREDICTION_RESULTS {
+        uuid id PK
+        uuid user_id FK
+        text patient_first_name
+        text patient_last_name
+        jsonb clinical_inputs
+        double risk_probability
+        double risk_percent
+        text risk_label
+        double uncertainty_std
+        double uncertainty_percent
+        jsonb confidence_interval_95
+        timestamptz created_at
+    }
+
+    RISK_CLASSIFICATION_SETTINGS {
+        uuid id PK
+        uuid user_id FK
+        double threshold
+        text label
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+Constraint notes:
+
+- `prediction_results.user_id -> auth.users.id`
+- `risk_classification_settings.user_id -> auth.users.id`
+- `risk_classification_settings` enforces `unique (user_id, threshold)`
+- `threshold` is constrained to `[0, 1]`
+
 ## Supabase tables (SQL)
 
 ```sql
