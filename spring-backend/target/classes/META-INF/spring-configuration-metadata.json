@@ -15,68 +15,57 @@
     {
       "name": "app.auth-cookie-name",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": "cb_auth_token"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.auth-cookie-same-site",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": "Lax"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.auth-cookie-secure",
       "type": "java.lang.Boolean",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": false
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.auth-login-max-attempts",
       "type": "java.lang.Integer",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": 8
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.auth-rate-limit-window-seconds",
       "type": "java.lang.Integer",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": 900
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.auth-signup-max-attempts",
       "type": "java.lang.Integer",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": 5
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.signup-password-min-length",
       "type": "java.lang.Integer",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": 12
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.supabase-anon-key",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": ""
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.supabase-results-table",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": "prediction_results"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.supabase-risk-settings-table",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": "risk_classification_settings"
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     },
     {
       "name": "app.supabase-url",
       "type": "java.lang.String",
-      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties",
-      "defaultValue": ""
+      "sourceType": "com.causalbootstrapping.crud.config.ApplicationProperties"
     }
   ],
   "hints": []

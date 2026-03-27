@@ -578,6 +578,7 @@ function App() {
     }
   }, [result])
 
+  
   const createApiFetch = (baseUrl) => (path, options = {}) => {
     const shouldSetJsonHeader = options.body !== undefined && !(options.body instanceof FormData)
     return fetch(`${baseUrl}${path}`, {

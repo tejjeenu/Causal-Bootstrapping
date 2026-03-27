@@ -2,6 +2,8 @@
 
 This repository combines a causal ML investigation with a deployable clinical-style web app for coronary artery disease risk prediction. The core question is simple: does strong performance on the UCI Heart Disease dataset survive after deconfounding, or is it mostly driven by observational associations?
 
+Biological interpretation at a glance: the deconfounded results suggest the stronger models are learning a relatively coherent **coronary ischemia phenotype** rather than relying mainly on demographic structure. In this repo, that phenotype is expressed through variables linked to **atherosclerotic vessel burden, reversible perfusion abnormality, exercise-induced angina, stress ECG change, and reduced exercise reserve**.
+
 Live app:
 - https://cad-causal-risk-predictor.web.app/
 
@@ -111,3 +113,4 @@ Run each service separately if you want a faster iteration loop:
 - [`docs/ML_API.md`](docs/ML_API.md)
 - [`docs/CRUD_API.md`](docs/CRUD_API.md)
 - [`docs/DEPLOY_RENDER_FIREBASE.md`](docs/DEPLOY_RENDER_FIREBASE.md)
+- [`research/notebooks/README.md`](research/notebooks/README.md): biology-focused interpretation of the notebook results and what deconfounding implies about the CAD phenotype captured by the data
